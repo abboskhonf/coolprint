@@ -1,0 +1,182 @@
+16:17:32 | INFO    | __main__ | =======================================================
+16:17:32 | INFO    | __main__ |   Canon iR2425 — Бот-Оркестратор v7.0
+16:17:32 | INFO    | __main__ | =======================================================
+16:17:32 | INFO    | __main__ |   Принтер: 192.168.68.114 (Canon iR2425)
+16:17:32 | INFO    | __main__ |   Разрешённый chat_id: 7523920886
+16:17:32 | INFO    | __main__ |   Бот запущен. Ожидаю PDF...
+16:17:33 | INFO    | __main__ |   Принтер: idle | счётчик: 16523 стр.
+16:17:33 | INFO    | aiogram.dispatcher | Start polling
+16:17:33 | INFO    | aiogram.dispatcher | Run polling for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+16:17:34 | INFO    | aiogram.event | Update id=310263732 is handled. Duration 399 ms by bot id=8705594522
+16:17:34 | INFO    | aiogram.event | Update id=310263731 is handled. Duration 450 ms by bot id=8705594522
+16:17:47 | INFO    | aiogram.event | Update id=310263733 is handled. Duration 440 ms by bot id=8705594522
+16:20:43 | INFO    | aiogram.dispatcher | Polling stopped
+16:20:43 | ERROR   | aiogram.dispatcher | Failed to fetch updates - TelegramNetworkError: HTTP Client says - ServerDisconnectedError: Server disconnected
+16:20:43 | WARNING | aiogram.dispatcher | Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8705594522)
+16:20:44 | INFO    | aiogram.dispatcher | Polling stopped for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+16:25:00 | INFO    | __main__ | =======================================================
+16:25:00 | INFO    | __main__ |   Canon iR2425 — Бот-Оркестратор v7.0
+16:25:00 | INFO    | __main__ | =======================================================
+16:25:00 | INFO    | __main__ |   Принтер: 192.168.68.114 (Canon iR2425)
+16:25:00 | INFO    | __main__ |   Разрешённый chat_id: 7523920886
+16:25:00 | INFO    | __main__ |   Бот запущен. Ожидаю PDF...
+16:25:00 | INFO    | __main__ |   Принтер: idle | счётчик: 16523 стр.
+16:25:00 | INFO    | aiogram.dispatcher | Start polling
+16:25:21 | INFO    | aiogram.dispatcher | Polling stopped
+16:26:47 | INFO    | __main__ | =======================================================
+16:26:47 | INFO    | __main__ |   Canon iR2425 — Бот-Оркестратор v7.0
+16:26:47 | INFO    | __main__ | =======================================================
+16:26:47 | INFO    | __main__ |   Принтер: 192.168.68.114 (Canon iR2425)
+16:26:47 | INFO    | __main__ |   Разрешённый chat_id: 7523920886
+16:26:47 | INFO    | __main__ |   Бот запущен. Ожидаю PDF...
+16:26:48 | INFO    | __main__ |   Принтер: idle | счётчик: 16523 стр.
+16:26:48 | INFO    | aiogram.dispatcher | Start polling
+16:26:48 | INFO    | aiogram.dispatcher | Run polling for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+16:27:13 | INFO    | aiogram.dispatcher | Polling stopped
+16:27:13 | ERROR   | aiogram.dispatcher | Failed to fetch updates - TelegramNetworkError: HTTP Client says - ServerDisconnectedError: Server disconnected
+16:27:13 | WARNING | aiogram.dispatcher | Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8705594522)
+16:27:13 | INFO    | aiogram.dispatcher | Polling stopped for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+17:01:45 | INFO    | __main__ | =======================================================
+17:01:45 | INFO    | __main__ |   Canon iR2425 — Бот-Оркестратор v7.0
+17:01:45 | INFO    | __main__ | =======================================================
+17:01:45 | INFO    | __main__ |   Принтер: 192.168.68.114 (iR2425)
+17:01:45 | INFO    | __main__ |   Разрешённый chat_id: 7523920886
+17:01:45 | INFO    | __main__ |   Бот запущен. Ожидаю PDF...
+17:01:45 | INFO    | __main__ |   Принтер: idle | счётчик: 16523 стр.
+17:01:45 | INFO    | aiogram.dispatcher | Start polling
+17:01:46 | INFO    | aiogram.dispatcher | Run polling for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+17:03:01 | INFO    | aiogram.event | Update id=310263734 is handled. Duration 3924 ms by bot id=8705594522
+17:03:23 | INFO    | aiogram.event | Update id=310263735 is handled. Duration 405 ms by bot id=8705594522
+17:03:26 | INFO    | aiogram.event | Update id=310263736 is handled. Duration 411 ms by bot id=8705594522
+17:03:29 | INFO    | aiogram.event | Update id=310263737 is handled. Duration 409 ms by bot id=8705594522
+17:03:50 | INFO    | aiogram.event | Update id=310263738 is handled. Duration 410 ms by bot id=8705594522
+17:03:50 | INFO    | print_service | PDF: bot_downloads\7523920886_a8b617b3_Destination B2.pdf | 224 исх. стр.
+17:03:50 | INFO    | print_service | Сборка макета брошюры (переплет: left)...
+17:04:09 | INFO    | print_service | Нагрузка: ≈30 физических листов/пачку (30 л × 1 коп.)
+17:04:09 | INFO    | print_service |   Пачка 1: стр.1–60 (сохранено 60 сторон)
+17:04:09 | INFO    | print_service |   Пачка 2: стр.61–112 (сохранено 52 сторон)
+17:04:10 | INFO    | snmp_manager |   Принтер: idle
+17:05:10 | WARNING | print_service |   Таймаут спулера (1/3)
+17:07:10 | WARNING | print_service |   Таймаут спулера (2/3)
+17:09:11 | WARNING | print_service |   Таймаут спулера (3/3)
+17:10:47 | INFO    | aiogram.dispatcher | Polling stopped
+17:10:47 | ERROR   | aiogram.dispatcher | Failed to fetch updates - TelegramNetworkError: HTTP Client says - ServerDisconnectedError: Server disconnected
+17:10:47 | WARNING | aiogram.dispatcher | Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8705594522)
+17:10:48 | INFO    | aiogram.dispatcher | Polling stopped for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+17:21:49 | INFO    | __main__ | =======================================================
+17:21:49 | INFO    | __main__ |   Canon iR2425 — Бот-Оркестратор v7.0
+17:21:49 | INFO    | __main__ | =======================================================
+17:21:49 | INFO    | __main__ |   Принтер: 192.168.68.114 (iR2425)
+17:21:49 | INFO    | __main__ |   Разрешённый chat_id: 7523920886
+17:21:49 | INFO    | __main__ |   Бот запущен. Ожидаю PDF...
+17:21:50 | INFO    | __main__ |   Принтер: idle | счётчик: 16523 стр.
+17:21:50 | INFO    | aiogram.dispatcher | Start polling
+17:21:53 | INFO    | aiogram.dispatcher | Run polling for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+17:22:18 | INFO    | aiogram.event | Update id=310263739 is handled. Duration 4060 ms by bot id=8705594522
+17:22:30 | INFO    | aiogram.event | Update id=310263740 is handled. Duration 507 ms by bot id=8705594522
+17:22:43 | INFO    | aiogram.event | Update id=310263741 is handled. Duration 413 ms by bot id=8705594522
+17:22:48 | INFO    | aiogram.event | Update id=310263742 is handled. Duration 416 ms by bot id=8705594522
+17:22:50 | INFO    | aiogram.event | Update id=310263743 is handled. Duration 414 ms by bot id=8705594522
+17:23:06 | INFO    | aiogram.event | Update id=310263744 is handled. Duration 413 ms by bot id=8705594522
+17:23:06 | INFO    | print_service | PDF: bot_downloads\7523920886_537124b1_Destination B2.pdf | 224 исх. стр.
+17:23:06 | INFO    | print_service | Сборка макета брошюры (переплет: left)...
+17:23:26 | INFO    | print_service | Нагрузка: ≈60 физических листов/пачку (60 л × 1 коп.)
+17:23:26 | WARNING | print_service | ⚠ Нагрузка > 30 листов/пачку. Уменьшите --batch или --copies.
+17:23:26 | INFO    | print_service |   Пачка 1: стр.1–112 (сохранено 112 сторон)
+17:23:27 | INFO    | snmp_manager |   Принтер: idle
+17:26:34 | INFO    | snmp_manager |   [SNMP] Фаза 1/3: ожидание пробуждения принтера...
+17:46:39 | INFO    | aiogram.dispatcher | Polling stopped
+17:46:39 | ERROR   | aiogram.dispatcher | Failed to fetch updates - TelegramNetworkError: HTTP Client says - ServerDisconnectedError: Server disconnected
+17:46:39 | WARNING | aiogram.dispatcher | Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8705594522)
+17:46:39 | INFO    | aiogram.dispatcher | Polling stopped for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+17:48:47 | INFO    | __main__ | =======================================================
+17:48:47 | INFO    | __main__ |   Canon iR2425 — Бот-Оркестратор v7.0
+17:48:47 | INFO    | __main__ | =======================================================
+17:48:47 | INFO    | __main__ |   Принтер: 192.168.68.114 (iR2425)
+17:48:47 | INFO    | __main__ |   Разрешённый chat_id: 7523920886
+17:48:47 | INFO    | __main__ |   Бот запущен. Ожидаю PDF...
+17:48:47 | INFO    | __main__ |   Принтер: printing | счётчик: 16569 стр.
+17:48:47 | INFO    | aiogram.dispatcher | Start polling
+17:48:48 | INFO    | aiogram.dispatcher | Run polling for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+17:49:02 | INFO    | aiogram.event | Update id=310263745 is handled. Duration 3398 ms by bot id=8705594522
+17:49:08 | INFO    | aiogram.event | Update id=310263746 is handled. Duration 306 ms by bot id=8705594522
+17:49:26 | INFO    | aiogram.event | Update id=310263747 is handled. Duration 409 ms by bot id=8705594522
+17:49:27 | INFO    | print_service | PDF: bot_downloads\7523920886_4db3ec7f_Destination B2 — копия.pdf | 8 исх. стр.
+17:49:27 | INFO    | print_service | Сборка макета брошюры (переплет: left)...
+17:49:28 | INFO    | print_service | Нагрузка: ≈30 физических листов/пачку (30 л × 1 коп.)
+17:49:28 | INFO    | print_service |   Часть 1: (сохранено 4 сторон)
+17:49:28 | ERROR   | __main__ | Задание печати упало: name 'total_batches' is not defined
+08:54:44 | INFO    | __main__ | =======================================================
+08:54:44 | INFO    | __main__ |   Canon iR2425 — Бот-Оркестратор v7.0 (Clean Arch)
+08:54:44 | INFO    | __main__ | =======================================================
+08:54:44 | INFO    | __main__ |   Принтер: 192.168.68.199 (iR2425)
+08:54:44 | INFO    | __main__ |   Разрешённый chat_id: 7080262472
+08:54:44 | INFO    | __main__ |   Принтер: offline | счётчик: 0 стр.
+08:54:44 | INFO    | __main__ | 🚀 Бот запущен. Проверка прерванных заданий...
+08:54:44 | INFO    | aiogram.dispatcher | Start polling
+08:54:45 | INFO    | aiogram.dispatcher | Run polling for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+08:55:11 | INFO    | __main__ | =======================================================
+08:55:11 | INFO    | __main__ |   Canon iR2425 — Бот-Оркестратор v7.0 (Clean Arch)
+08:55:11 | INFO    | __main__ | =======================================================
+08:55:11 | INFO    | __main__ |   Принтер: 192.168.68.199 (iR2425)
+08:55:11 | INFO    | __main__ |   Разрешённый chat_id: 7080262472
+08:55:11 | INFO    | __main__ |   Принтер: offline | счётчик: 0 стр.
+08:55:11 | INFO    | __main__ | 🚀 Бот запущен. Проверка прерванных заданий...
+08:55:11 | INFO    | aiogram.dispatcher | Start polling
+08:55:12 | INFO    | aiogram.dispatcher | Run polling for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+08:56:33 | INFO    | aiogram.event | Update id=310264103 is handled. Duration 795 ms by bot id=8705594522
+08:57:25 | INFO    | __main__ | =======================================================
+08:57:25 | INFO    | __main__ |   Canon iR2425 — Бот-Оркестратор v7.0 (Clean Arch)
+08:57:25 | INFO    | __main__ | =======================================================
+08:57:25 | INFO    | __main__ |   Принтер: 192.168.68.199 (iR2425)
+08:57:25 | INFO    | __main__ |   Разрешённый chat_id: 7080262472
+08:57:25 | INFO    | __main__ |   Принтер: offline | счётчик: 0 стр.
+08:57:25 | INFO    | __main__ | 🚀 Бот запущен. Проверка прерванных заданий...
+08:57:25 | INFO    | aiogram.dispatcher | Start polling
+08:57:26 | INFO    | aiogram.dispatcher | Run polling for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+08:58:04 | INFO    | aiogram.event | Update id=310264104 is handled. Duration 33022 ms by bot id=8705594522
+09:03:23 | WARNING | aiogram.dispatcher | Received SIGINT signal
+09:03:23 | INFO    | aiogram.dispatcher | Polling stopped for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+09:03:23 | INFO    | aiogram.dispatcher | Polling stopped
+09:03:23 | WARNING | __main__ | !!! Сигнал остановки системы. Перевожу задания в режим PAUSE...
+09:03:23 | INFO    | __main__ | ✅ Все состояния сохранены. До свидания!
+09:03:35 | INFO    | __main__ | =======================================================
+09:03:35 | INFO    | __main__ |   Canon iR2425 — Бот-Оркестратор v7.0 (Clean Arch)
+09:03:35 | INFO    | __main__ | =======================================================
+09:03:35 | INFO    | __main__ |   Принтер: 192.168.68.199 (iR2425)
+09:03:35 | INFO    | __main__ |   Разрешённый chat_id: 7080262472
+09:03:35 | INFO    | __main__ |   Принтер: offline | счётчик: 0 стр.
+09:03:35 | INFO    | __main__ | 🚀 Бот запущен. Проверка прерванных заданий...
+09:03:35 | INFO    | aiogram.dispatcher | Start polling
+09:03:36 | INFO    | aiogram.dispatcher | Run polling for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+09:03:36 | INFO    | aiogram.dispatcher | Polling stopped for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+09:03:36 | INFO    | aiogram.dispatcher | Polling stopped
+09:03:36 | WARNING | __main__ | !!! Сигнал остановки системы. Перевожу задания в режим PAUSE...
+09:03:36 | INFO    | __main__ | ✅ Все состояния сохранены. До свидания!
+09:03:51 | INFO    | __main__ | =======================================================
+09:03:51 | INFO    | __main__ |   Canon iR2425 — Бот-Оркестратор v7.0 (Clean Arch)
+09:03:51 | INFO    | __main__ | =======================================================
+09:03:51 | INFO    | __main__ |   Принтер: 192.168.68.199 (iR2425)
+09:03:51 | INFO    | __main__ |   Разрешённый chat_id: 7080262472
+09:03:51 | INFO    | __main__ |   Принтер: offline | счётчик: 0 стр.
+09:03:51 | INFO    | __main__ | 🚀 Бот запущен. Проверка прерванных заданий...
+09:03:51 | INFO    | aiogram.dispatcher | Start polling
+09:03:51 | INFO    | aiogram.dispatcher | Run polling for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+09:03:51 | INFO    | aiogram.dispatcher | Polling stopped for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+09:03:51 | INFO    | aiogram.dispatcher | Polling stopped
+09:03:51 | WARNING | __main__ | !!! Сигнал остановки системы. Перевожу задания в режим PAUSE...
+09:03:51 | INFO    | __main__ | ✅ Все состояния сохранены. До свидания!
+09:04:35 | INFO    | __main__ | =======================================================
+09:04:35 | INFO    | __main__ |   Canon iR2425 — Бот-Оркестратор v7.0 (Clean Arch)
+09:04:35 | INFO    | __main__ | =======================================================
+09:04:35 | INFO    | __main__ |   Принтер: 192.168.68.199 (iR2425)
+09:04:35 | INFO    | __main__ |   Разрешённый chat_id: 7080262472
+09:04:35 | INFO    | __main__ |   Принтер: offline | счётчик: 0 стр.
+09:04:35 | INFO    | __main__ | 🚀 Бот запущен. Проверка прерванных заданий...
+09:04:35 | INFO    | aiogram.dispatcher | Start polling
+09:04:35 | INFO    | aiogram.dispatcher | Run polling for bot @CanonCarePrint_bot id=8705594522 - 'CanonCarePrint'
+09:04:52 | INFO    | aiogram.event | Update id=310264105 is handled. Duration 4145 ms by bot id=8705594522
+09:05:22 | INFO    | aiogram.event | Update id=310264106 is handled. Duration 4137 ms by bot id=8705594522
+09:05:43 | INFO    | aiogram.event | Update id=310264107 is handled. Duration 881 ms by bot id=8705594522
+09:07:33 | INFO    | aiogram.event | Update id=310264108 is handled. Duration 16253 ms by bot id=8705594522
+09:08:10 | INFO    | aiogram.event | Update id=310264109 is handled. Duration 520 ms by bot id=8705594522
