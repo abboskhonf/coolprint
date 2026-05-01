@@ -1,2 +1,0 @@
-﻿Timestamp;Chat_ID;File_Name;Total_Pages;Copies;Batches_Done;Total_Batches;Status;SNMP_Start;SNMP_End;Duration_Min;Notes
-2026-04-14 12:50:12;7080262472;Destination B2.pdf;224;3;0;6;FAILED;17825;17825;0;SNMP Сбой: Счётчик +0, ожидалось ≥64. Задание застряло?
