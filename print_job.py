@@ -16,7 +16,7 @@ from snmp_manager import PrinterStatus
 from state_manager import JobState, AuditLog, Phase
 
 # Импортируем общие настройки и утилиты из core и config
-from config import PRINTER_IP, PRINTER_NAME, SNMP_CFG, WAKE_TIMEOUT, WATCHDOG_MIN
+from config import PRINTER_IP, PRINTER_NAME, SNMP_CFG, WAKE_TIMEOUT, WATCHDOG_MIN, CHUNKS_PER_BATCH
 from core import JobConfig, safe_edit, kb_printing, _esc, progress_bar, cooldown_bar
 
 log = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ async def run_print_job(bot: Bot, chat_id: int, job: JobConfig) -> None:
 
     batches_dir = pdf_processor.get_batches_dir(source_pdf)
     actual_batch = job.batch_size
-    actual_chunk = max(8, actual_batch // 1)
+    actual_chunk = max(8, actual_batch // CHUNKS_PER_BATCH)
 
     try:
         batches = await pdf_processor.split_pdf_into_batches(

@@ -33,6 +33,7 @@ DEFAULT_BATCH    = CFG.getint("print", "batch_size",        fallback=64)
 DEFAULT_COOLDOWN = CFG.getint("print", "cooldown_minutes",  fallback=25)
 DEFAULT_DUPLEX   = CFG.get("print",   "duplex",             fallback="long")
 DEFAULT_COPIES   = CFG.getint("print", "copies",            fallback=1)
+CHUNKS_PER_BATCH = CFG.getint("print", "chunks_per_batch",  fallback=1)
 
 DOWNLOADS_DIR = Path("bot_downloads")
 DOWNLOADS_DIR.mkdir(exist_ok=True)
