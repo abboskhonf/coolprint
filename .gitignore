@@ -1,0 +1,9 @@
+bot.log
+__pycache__/
+SumatraPDF-settings.txt
+print_history.csv
+.venv/
+.DS_Store
+*.pdf
+bot_downloads/
+canon_batches_*/
