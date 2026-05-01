@@ -7,3 +7,4 @@ print_history.csv
 *.pdf
 bot_downloads/
 canon_batches_*/
+config.ini
