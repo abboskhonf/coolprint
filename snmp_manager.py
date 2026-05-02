@@ -155,18 +155,11 @@ async def wait_until_idle(
     cfg: SNMPConfig,
     timeout_sec: int = 360,
     stop_event: Optional[asyncio.Event] = None,
-    on_offline_callback=None,
+    on_offline_callback=None
 ) -> bool:
-    """
-    Ждёт перехода принтера в IDLE.
-    - stop_event (asyncio.Event) — мгновенное прерывание
-    - on_offline_callback — вызывается при первом уходе в OFFLINE
-    Возвращает True если дождались IDLE, False если timeout или прерывание.
-    """
+    """Ждёт перехода принтера в статус IDLE. Замораживает таймер при оффлайне/ошибках."""
     deadline = time.monotonic() + timeout_sec
-    last_status = None
     offline_notified = False
-    poll_interval = 5.0
 
     while time.monotonic() < deadline:
         if stop_event and stop_event.is_set():
@@ -174,39 +167,32 @@ async def wait_until_idle(
 
         state = await get_printer_state(ip, cfg)
 
-        if state.status != last_status:
-            log.info(f"  Принтер: {state.status.value}")
-            last_status = state.status
-
         if state.status == PrinterStatus.IDLE:
             return True
 
-        if state.status == PrinterStatus.OFFLINE:
-            if not offline_notified and on_offline_callback:
-                try:
-                    on_offline_callback()
-                except Exception:
-                    pass
-                offline_notified = True
-            poll_interval = 30.0
-        else:
-            offline_notified = False
-            poll_interval = 5.0
+        # 🔻 МАГИЯ ЗАМОРОЗКИ ВРЕМЕНИ 🔻
+        # Если нет сети или физическая проблема (бумага/замятие) - мы ждем бесконечно.
+        if state.status in (PrinterStatus.OFFLINE, PrinterStatus.ERROR, PrinterStatus.WARNING):
+            deadline = time.monotonic() + timeout_sec  # Сдвигаем дедлайн вперед!
+            
+            if state.status == PrinterStatus.OFFLINE:
+                if not offline_notified and on_offline_callback:
+                    try:
+                        on_offline_callback() # Уведомляем Telegram 1 раз
+                    except Exception:
+                        pass
+                    offline_notified = True
+                await asyncio.sleep(15)
+            else:
+                offline_notified = False
+                await asyncio.sleep(5)
+            continue
+        # 🔺 ------------------------- 🔺
 
-        # Прерываемый sleep: asyncio.wait_for на asyncio.Event
-        if stop_event:
-            try:
-                await asyncio.wait_for(
-                    asyncio.shield(stop_event.wait()),
-                    timeout=poll_interval,
-                )
-                return False  # событие наступило — прерываем
-            except asyncio.TimeoutError:
-                pass  # таймаут истёк — продолжаем цикл
-        else:
-            await asyncio.sleep(poll_interval)
+        offline_notified = False
+        await asyncio.sleep(5)
 
-    log.error(f"  Принтер не вышел в IDLE за {timeout_sec} сек")
+    log.error(f"Принтер не вышел в IDLE за {timeout_sec} сек")
     return False
 
 

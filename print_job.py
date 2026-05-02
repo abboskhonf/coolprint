@@ -294,8 +294,17 @@ async def run_print_job(bot: Bot, chat_id: int, job: JobConfig) -> None:
 
             if state.status in (PrinterStatus.PRINTING, PrinterStatus.WARMUP):
                 cycles_in_idle = 0  
-                if last_notified_status in (PrinterStatus.WARNING, PrinterStatus.ERROR):
-                    await update_status(f"🖨 <b>Печатаю пачку {i+1}/{total_batches}</b>\n[{bar}]\n\n✅ <b>Проблема решена, печать продолжается!</b>\n📄 Страницы: {page_range}\n📊 Прогресс: {max(0, printed)}/{expected} стр.")
+                # Если до этого была ошибка или оффлайн, сообщаем, что печать продолжилась
+                if last_notified_status in (PrinterStatus.WARNING, PrinterStatus.ERROR, PrinterStatus.OFFLINE):
+                    await update_status(f"🖨 <b>Печатаю пачку {i+1}/{total_batches}</b>\n[{bar}]\n\n✅ <b>Связь/проблема восстановлена!</b>\n📄 Страницы: {page_range}\n📊 Прогресс: {max(0, printed)}/{expected} стр.")
+                    last_notified_status = state.status
+
+            elif state.status == PrinterStatus.OFFLINE:
+                cycles_in_idle = 0
+                watchdog_end = time.time() + (WATCHDOG_MIN * 60) # 🔻 ЗАМОРОЗКА 🔻
+                if last_notified_status != state.status:
+                    log.warning("  ⚠️ [SNMP] Принтер ушел в оффлайн во время печати. Ждем сеть...")
+                    await update_status(f"⚠️ <b>Потеряна связь!</b>\nПачка {i+1}/{total_batches}\n\nПринтер отключился от Wi-Fi.\n<i>Бот ждет появления сети бесконечно...</i>")
                     last_notified_status = state.status
 
             elif state.status in (PrinterStatus.IDLE, PrinterStatus.SLEEP, PrinterStatus.UNKNOWN):
@@ -305,13 +314,14 @@ async def run_print_job(bot: Bot, chat_id: int, job: JobConfig) -> None:
                     break
                 else:
                     cycles_in_idle += 1
-                    if cycles_in_idle > 240:  # 12 минуты ожидания
+                    if cycles_in_idle > 240:  # 12 минут ожидания
                         success, msg = False, f"Счётчик +{printed}, ожидалось ≥{expected}. Задание потеряно в сети/спулере."
                         log.warning(f"  ⚠️ [SNMP] Ошибка: {msg}")
                         break
 
             elif state.status in (PrinterStatus.WARNING, PrinterStatus.ERROR):
-                cycles_in_idle = 0  # Ждем человека бесконечно
+                cycles_in_idle = 0  
+                watchdog_end = time.time() + (WATCHDOG_MIN * 60) # 🔻 ЗАМОРОЗКА 🔻
                 if last_notified_status != state.status:
                     alert_icon = "⚠️" if state.status == PrinterStatus.WARNING else "❌"
                     alert_reason = "нет бумаги?" if state.status == PrinterStatus.WARNING else "замятие/открыта крышка"
