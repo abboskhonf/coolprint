@@ -204,7 +204,12 @@ async def run_print_job(bot: Bot, chat_id: int, job: JobConfig) -> None:
 
         if not idle_ok:
             if not stop.is_set():
-                await update_status(f"❌ <b>Принтер не готов!</b>\n\nПачка {i+1} пропущена — принтер не вышел в IDLE.", kb=InlineKeyboardMarkup(inline_keyboard=[]))
+                # 🔻 ДОБАВЛЕНО: Кнопка перехода в меню восстановления
+                rec_kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🛠 Умное восстановление", callback_data=f"recovery_menu:{batches_dir.name}")],
+                    [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel")]
+                ])
+                await update_status(f"❌ <b>Принтер не готов!</b>\n\nПачка {i+1} пропущена — принтер не вышел в IDLE.", kb=rec_kb)
                 state_mgr.update_phase(Phase.FAILED, completed_batches=completed, error="Printer not IDLE")
                 AuditLog.append(chat_id, job.pdf_name, job.total_pages, job.copies, completed, total_batches, "FAILED", 0, 0, notes="Ошибка: принтер не вышел в IDLE")
             break
@@ -234,7 +239,12 @@ async def run_print_job(bot: Bot, chat_id: int, job: JobConfig) -> None:
             break   
         
         if send_failed:
-            await update_status(f"❌ <b>Ошибка отправки!</b>\n\nПачка {i+1} не ушла в спулер.", kb=InlineKeyboardMarkup(inline_keyboard=[]))
+            # 🔻 ДОБАВЛЕНО: Кнопка перехода в меню восстановления
+            rec_kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🛠 Умное восстановление", callback_data=f"recovery_menu:{batches_dir.name}")],
+                [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel")]
+            ])
+            await update_status(f"❌ <b>Ошибка отправки!</b>\n\nПачка {i+1} не ушла в спулер.", kb=rec_kb)
             state_mgr.update_phase(Phase.FAILED, completed_batches=completed, error="Spooler send failed")
             AuditLog.append(chat_id, job.pdf_name, job.total_pages, job.copies, completed, total_batches, "FAILED", start_count, start_count, notes="Ошибка отправки в спулер")
             break
@@ -316,7 +326,13 @@ async def run_print_job(bot: Bot, chat_id: int, job: JobConfig) -> None:
         if stop.is_set(): break
 
         if not success:
-            await update_status(f"❌ <b>Ошибка верификации! Пачка {i+1}/{total_batches}</b>\n\n🔴 {_esc(msg)}\n\nПроверьте принтер и запустите заново.", kb=InlineKeyboardMarkup(inline_keyboard=[]))
+            # 🔻 ДОБАВЛЕНО: Кнопка умного восстановления
+            rec_kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🛠 Умное восстановление", callback_data=f"recovery_menu:{batches_dir.name}")],
+                [InlineKeyboardButton(text="❌ Завершить", callback_data="cancel")]
+            ])
+            await update_status(f"❌ <b>Ошибка верификации! Пачка {i+1}/{total_batches}</b>\n\n🔴 {_esc(msg)}\n\nЗадание прервано. Нажмите кнопку ниже для пересчета страниц и продолжения.", kb=rec_kb)
+            
             state_mgr.update_phase(Phase.FAILED, completed_batches=completed, error=msg)
             AuditLog.append(chat_id, job.pdf_name, job.total_pages, job.copies, completed, total_batches, "FAILED", start_count, end_count, notes=f"SNMP Сбой: {msg}")
             break

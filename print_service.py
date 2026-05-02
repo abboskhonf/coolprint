@@ -48,28 +48,28 @@ async def _run_cmd(cmd: list[str], timeout: float) -> tuple[int, str, str]:
 
 
 async def _send_windows(file_path: Path, printer_name: str, duplex: str, copies: int) -> None:
-    """
-    Отправка через SumatraPDF.
-    copies=1 — копии уже размножены в PDF при нарезке.
-    paper=A4 + shrink: правильный лоток и вписывание в область печати.
-    """
-    sumatra = _find_sumatra()
-    if not sumatra:
-        raise FileNotFoundError(
-            "SumatraPDF.exe не найден. "
-            "Скачайте portable: https://www.sumatrapdfreader.org"
-        )
-    settings = ["1x", "paper=A4"]
-    if flag := DUPLEX_SUMATRA.get(duplex):
-        settings.append(flag)
-    settings.append("shrink")
-
-    cmd = [str(sumatra), "-print-to", printer_name, "-silent",
-           "-print-settings", ",".join(settings), str(file_path)]
-    log.debug(f"CMD: {' '.join(cmd)}")
-    rc, _, err = await _run_cmd(cmd, timeout=360)
-    if rc != 0:
-        raise RuntimeError(f"SumatraPDF rc={rc}: {err.strip()}")
+    # Используем PDFtoPrinter вместо SumatraPDF
+    pdf_printer = Path("PDFtoPrinter.exe")
+    if not pdf_printer.exists(): 
+        pdf_printer = Path(__file__).parent / "PDFtoPrinter.exe"
+        if not pdf_printer.exists():
+            raise FileNotFoundError("PDFtoPrinter.exe не найден. Скачайте и положите рядом со скриптом.")
+    
+    # PDFtoPrinter принимает простые аргументы: файл и имя принтера
+    # Копии и дуплекс мы уже реализовали на уровне генерации PDF в Python
+    cmd = [
+        str(pdf_printer), 
+        str(file_path), 
+        printer_name
+    ]
+    
+    log.info(f"Передача вектора в Windows Spooler: {file_path.name}")
+    
+    # Таймаут можно смело ставить меньше, так как вектор улетает в спулер за секунды
+    rc, out, err = await _run_cmd([asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)], timeout=120)
+    
+    if rc != 0: 
+        raise RuntimeError(f"PDFtoPrinter rc={rc}: {err}")
 
 
 async def _send_unix(file_path: Path, printer_name: str, duplex: str, copies: int) -> None:
