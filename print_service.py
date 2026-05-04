@@ -48,28 +48,55 @@ async def _run_cmd(cmd: list[str], timeout: float) -> tuple[int, str, str]:
 
 
 async def _send_windows(file_path: Path, printer_name: str, duplex: str, copies: int) -> None:
-    # Используем PDFtoPrinter вместо SumatraPDF
-    pdf_printer = Path("PDFtoPrinter.exe")
-    if not pdf_printer.exists(): 
-        pdf_printer = Path(__file__).parent / "PDFtoPrinter.exe"
-        if not pdf_printer.exists():
-            raise FileNotFoundError("PDFtoPrinter.exe не найден. Скачайте и положите рядом со скриптом.")
-    
-    # PDFtoPrinter принимает простые аргументы: файл и имя принтера
-    # Копии и дуплекс мы уже реализовали на уровне генерации PDF в Python
+    # Ищем Ghostscript (gswin64c.exe)
+    gs_exe = Path("gswin64c.exe")
+    if not gs_exe.exists():
+        gs_exe = Path(__file__).parent / "gswin64c.exe"
+        
+    # Если не положили рядом, ищем в стандартных путях Windows
+    if not gs_exe.exists():
+        import glob
+        # Ищет любую установленную версию Ghostscript
+        gs_paths = glob.glob(r"C:\Program Files\gs\gs*\bin\gswin64c.exe")
+        if gs_paths:
+            gs_exe = Path(gs_paths[-1])  # Берем самую свежую версию
+        else:
+            raise FileNotFoundError(
+                "Ghostscript не найден. Установите с ghostscript.com "
+                "или положите gswin64c.exe и gsdll64.dll рядом со скриптом."
+            )
+
+    # ── КОМАНДА GHOSTSCRIPT ДЛЯ ИДЕАЛЬНОЙ ПЕЧАТИ ──
     cmd = [
-        str(pdf_printer), 
-        str(file_path), 
-        printer_name
+        str(gs_exe),
+        "-dPrinted",         # Режим печати (сохраняет оригинальные размеры)
+        "-dBATCH",           # Закрыть GS после завершения
+        "-dNOPAUSE",         # Не ждать нажатия клавиш между страницами
+        "-dNOSAFER",         # Разрешить чтение файлов
+        "-dNoCancel",        # Скрыть назойливое окно отмены Windows
+        "-q",                # Тихий режим (без лишних логов в консоль)
+        "-sPAPERSIZE=a4",    # 🔻 ЖЕСТКО ЗАДАЕМ А4 🔻
+        "-sDEVICE=mswinpr2", # Устройство вывода: Windows Spooler
+        f"-sOutputFile=%printer%{printer_name}" # Целевой принтер
     ]
     
-    log.info(f"Передача вектора в Windows Spooler: {file_path.name}")
+    # 🔻 ЖЕСТКО ПЕРЕДАЕМ ДУПЛЕКС СПУЛЕРУ WINDOWS 🔻
+    if duplex == "long":
+        cmd.extend(["-dDuplex=true", "-dTumble=false"])
+    elif duplex == "short":
+        cmd.extend(["-dDuplex=true", "-dTumble=true"])
+    else:
+        cmd.extend(["-dDuplex=false"])
+        
+    cmd.append(str(file_path))
     
-    # Таймаут можно смело ставить меньше, так как вектор улетает в спулер за секунды
-    rc, out, err = await _run_cmd([asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)], timeout=120)
+    log.info(f"Ghostscript отправляет вектор (A4): {file_path.name}")
+    
+    # Таймаут: Вектор через GS переваривается и улетает в спулер за пару секунд
+    rc, out, err = await _run_cmd(cmd, timeout=120)
     
     if rc != 0: 
-        raise RuntimeError(f"PDFtoPrinter rc={rc}: {err}")
+        raise RuntimeError(f"Ghostscript rc={rc}: {err}")
 
 
 async def _send_unix(file_path: Path, printer_name: str, duplex: str, copies: int) -> None:
