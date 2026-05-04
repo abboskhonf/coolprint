@@ -46,58 +46,42 @@ async def _run_cmd(cmd: list[str], timeout: float) -> tuple[int, str, str]:
         await proc.communicate()
         raise
 
+async def _send_windows(file_path: Path, printer_name_base: str, duplex: str, copies: int) -> None:
+    # PDFtoPrinter идеален для передачи в драйвер, когда мы не трогаем настройки
+    pdf_printer = Path("PDFtoPrinter.exe")
+    if not pdf_printer.exists(): 
+        pdf_printer = Path(__file__).parent / "PDFtoPrinter.exe"
+        if not pdf_printer.exists():
+            raise FileNotFoundError("PDFtoPrinter.exe не найден.")
+    
+    # 1. Читаем конфиг, чтобы выбрать правильный логический принтер
+    import configparser
+    cfg = configparser.ConfigParser()
+    cfg.read("config.ini", encoding="utf-8")
+    
+    # Маршрутизируем задание в зависимости от режима дуплекса
+    if duplex == "long":
+        target_printer = cfg.get("printer", "name_long", fallback=printer_name_base)
+    elif duplex == "short":
+        target_printer = cfg.get("printer", "name_short", fallback=printer_name_base)
+    else:
+        target_printer = cfg.get("printer", "name_none", fallback=printer_name_base)
 
-async def _send_windows(file_path: Path, printer_name: str, duplex: str, copies: int) -> None:
-    # Ищем Ghostscript (gswin64c.exe)
-    gs_exe = Path("gswin64c.exe")
-    if not gs_exe.exists():
-        gs_exe = Path(__file__).parent / "gswin64c.exe"
-        
-    # Если не положили рядом, ищем в стандартных путях Windows
-    if not gs_exe.exists():
-        import glob
-        # Ищет любую установленную версию Ghostscript
-        gs_paths = glob.glob(r"C:\Program Files\gs\gs*\bin\gswin64c.exe")
-        if gs_paths:
-            gs_exe = Path(gs_paths[-1])  # Берем самую свежую версию
-        else:
-            raise FileNotFoundError(
-                "Ghostscript не найден. Установите с ghostscript.com "
-                "или положите gswin64c.exe и gsdll64.dll рядом со скриптом."
-            )
-
-    # ── КОМАНДА GHOSTSCRIPT ДЛЯ ИДЕАЛЬНОЙ ПЕЧАТИ ──
+    # 2. Отправляем ЧИСТЫЙ файл без CLI-костылей
+    # Драйвер Canon UFR II сам применит А4 и нужный переплет, 
+    # а также сожмет файл до ~1 МБ
     cmd = [
-        str(gs_exe),
-        "-dPrinted",         # Режим печати (сохраняет оригинальные размеры)
-        "-dBATCH",           # Закрыть GS после завершения
-        "-dNOPAUSE",         # Не ждать нажатия клавиш между страницами
-        "-dNOSAFER",         # Разрешить чтение файлов
-        "-dNoCancel",        # Скрыть назойливое окно отмены Windows
-        "-q",                # Тихий режим (без лишних логов в консоль)
-        "-sPAPERSIZE=a4",    # 🔻 ЖЕСТКО ЗАДАЕМ А4 🔻
-        "-sDEVICE=mswinpr2", # Устройство вывода: Windows Spooler
-        f"-sOutputFile=%printer%{printer_name}" # Целевой принтер
+        str(pdf_printer), 
+        str(file_path), 
+        target_printer
     ]
     
-    # 🔻 ЖЕСТКО ПЕРЕДАЕМ ДУПЛЕКС СПУЛЕРУ WINDOWS 🔻
-    if duplex == "long":
-        cmd.extend(["-dDuplex=true", "-dTumble=false"])
-    elif duplex == "short":
-        cmd.extend(["-dDuplex=true", "-dTumble=true"])
-    else:
-        cmd.extend(["-dDuplex=false"])
-        
-    cmd.append(str(file_path))
+    log.info(f"Отправка на логический принтер [{target_printer}]: {file_path.name}")
     
-    log.info(f"Ghostscript отправляет вектор (A4): {file_path.name}")
-    
-    # Таймаут: Вектор через GS переваривается и улетает в спулер за пару секунд
     rc, out, err = await _run_cmd(cmd, timeout=120)
     
     if rc != 0: 
-        raise RuntimeError(f"Ghostscript rc={rc}: {err}")
-
+        raise RuntimeError(f"PDFtoPrinter rc={rc}: {err}")
 
 async def _send_unix(file_path: Path, printer_name: str, duplex: str, copies: int) -> None:
     """Отправка через CUPS. copies=1 — копии уже в PDF."""
