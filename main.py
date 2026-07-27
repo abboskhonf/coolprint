@@ -271,6 +271,7 @@ async def _async_main() -> None:
         # 4. SNMP КОНТРОЛЬ ПЕЧАТИ
         log.info("Ожидание аппаратного подтверждения...")
         success, msg, end_count, cycles_in_idle = False, "", start_count, 0
+        error_cycles = 0  # <--- Добавлен отдельный счетчик для ошибок
         watchdog_end = time.time() + (watchdog_min * 60)
         last_logged = -1
         
@@ -291,20 +292,29 @@ async def _async_main() -> None:
 
             if state.status in (PrinterStatus.PRINTING, PrinterStatus.WARMUP):
                 cycles_in_idle = 0  
+                error_cycles = 0
             elif state.status in (PrinterStatus.IDLE, PrinterStatus.SLEEP, PrinterStatus.UNKNOWN):
+                error_cycles = 0
                 if printed >= expected:
                     success, msg = True, f"Успешно: +{printed} стр."
                     break
                 else:
                     cycles_in_idle += 1
-                    if cycles_in_idle > 240: # 12 мин
-                        success, msg = False, f"Таймаут (сеть/спулер): {printed}/{expected} стр."
+                    # Напоминаем в лог каждые 5 минут (100 циклов * 3 сек), чтобы не казалось, что скрипт завис
+                    if cycles_in_idle % 100 == 0:
+                        log.info(f"  ⏳ Ожидание печати... ({printed}/{expected} стр). Принтер в IDLE. Ждем (таймаут 2 часа)...")
+                    
+                    # 🔻 ХИРУРГИЧЕСКАЯ ПРАВКА: Увеличиваем таймаут IDLE до 2 часов (2400 циклов по 3 сек)
+                    if cycles_in_idle > 2400: 
+                        success, msg = False, f"Таймаут 2 часа (сеть/спулер): {printed}/{expected} стр."
                         break
-            elif state.status in (PrinterStatus.WARNING, PrinterStatus.ERROR):
-                cycles_in_idle = 0  # ЖДЕМ БЕСКОНЕЧНО
-                # не спамим логами, выводим раз в 60 секунд (20 итераций)
-                if cycles_in_idle % 20 == 0:
-                    log.warning(f"  ⚠️ Принтер требует бумаги/внимания ({state.status.value}). Ждем...")
+            elif state.status in (PrinterStatus.WARNING, PrinterStatus.ERROR, PrinterStatus.OFFLINE):
+                cycles_in_idle = 0  # Сбрасываем таймаут сети
+                error_cycles += 1
+                
+                if error_cycles % 20 == 0:
+                    status_text = "НЕТ СЕТИ" if state.status == PrinterStatus.OFFLINE else state.status.value
+                    log.warning(f"  ⚠️ Принтер недоступен или требует внимания ({status_text}). Ждем бесконечно...")
 
             await asyncio.sleep(3.0)
 
