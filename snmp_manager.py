@@ -157,42 +157,55 @@ async def wait_until_idle(
     stop_event: Optional[asyncio.Event] = None,
     on_offline_callback=None
 ) -> bool:
-    """Ждёт перехода принтера в статус IDLE. Замораживает таймер при оффлайне/ошибках."""
+    """Ждёт готовности принтера. Считает SLEEP тоже готовым состоянием. Замораживает таймер при сбоях."""
+    # Жестко ставим минимум 2 часа (7200 сек) ожидания, чтобы скрипт никогда не отваливался по таймауту
+    timeout_sec = max(timeout_sec, 7200)
     deadline = time.monotonic() + timeout_sec
     offline_notified = False
+    cycles_waiting = 0
 
     while time.monotonic() < deadline:
         if stop_event and stop_event.is_set():
             return False
 
-        state = await get_printer_state(ip, cfg)
+        try:
+            state = await get_printer_state(ip, cfg)
+        except Exception:
+            await asyncio.sleep(5)
+            continue
 
-        if state.status == PrinterStatus.IDLE:
+        # 🔻 ПРАВКА 1: SLEEP — это тоже нормальное состояние. Принтер проснется сам при получении файла!
+        if state.status in (PrinterStatus.IDLE, PrinterStatus.SLEEP):
             return True
 
-        # 🔻 МАГИЯ ЗАМОРОЗКИ ВРЕМЕНИ 🔻
-        # Если нет сети или физическая проблема (бумага/замятие) - мы ждем бесконечно.
-        if state.status in (PrinterStatus.OFFLINE, PrinterStatus.ERROR, PrinterStatus.WARNING):
-            deadline = time.monotonic() + timeout_sec  # Сдвигаем дедлайн вперед!
+        # 🔻 ПРАВКА 2: Замораживаем таймер для ЛЮБЫХ проблемных/непонятных статусов
+        if state.status in (PrinterStatus.OFFLINE, PrinterStatus.ERROR, PrinterStatus.WARNING, PrinterStatus.UNKNOWN):
+            deadline = time.monotonic() + timeout_sec  # Бесконечно отодвигаем дедлайн
             
             if state.status == PrinterStatus.OFFLINE:
                 if not offline_notified and on_offline_callback:
-                    try:
-                        on_offline_callback() # Уведомляем Telegram 1 раз
-                    except Exception:
-                        pass
+                    try: on_offline_callback()
+                    except Exception: pass
                     offline_notified = True
-                await asyncio.sleep(15)
             else:
                 offline_notified = False
-                await asyncio.sleep(5)
+                
+            cycles_waiting += 1
+            if cycles_waiting % 12 == 0:  # Раз в минуту пишем в лог, чтобы было видно, что скрипт жив
+                log.warning(f"  ⚠️ Ожидание перед отправкой: принтер не готов ({state.status.value}). Ждем...")
+                
+            await asyncio.sleep(5)
             continue
-        # 🔺 ------------------------- 🔺
 
+        # Если принтер WARMUP или PRINTING (кто-то другой печатает), просто ждем освобождения очереди
         offline_notified = False
+        cycles_waiting += 1
+        if cycles_waiting % 12 == 0:
+            log.info(f"  ⏳ Принтер занят другим заданием ({state.status.value}). Ожидаем освобождения...")
+            
         await asyncio.sleep(5)
 
-    log.error(f"Принтер не вышел в IDLE за {timeout_sec} сек")
+    log.error(f"Принтер не вышел в готовность за {timeout_sec} сек")
     return False
 
 

@@ -113,7 +113,7 @@ async def _async_main() -> None:
         timeout=cfg.getfloat("snmp", "timeout", fallback=3.0),
         retries=cfg.getint("snmp", "retries", fallback=2),
     )
-    wake_timeout = cfg.getint("snmp", "wake_timeout_sec", fallback=360)
+    wake_timeout = cfg.getint("snmp", "wake_timeout_sec", fallback=7200)
     watchdog_min = cfg.getint("snmp", "print_watchdog_min", fallback=600) # Ждем всю ночь
 
     total_pages = pdf_processor.get_total_pages(args.pdf)
@@ -311,6 +311,10 @@ async def _async_main() -> None:
             elif state.status in (PrinterStatus.WARNING, PrinterStatus.ERROR, PrinterStatus.OFFLINE):
                 cycles_in_idle = 0  # Сбрасываем таймаут сети
                 error_cycles += 1
+                
+                # 🔻 МАГИЯ ЗАМОРОЗКИ ВРЕМЕНИ 🔻
+                # Сдвигаем общий дедлайн пачки вперед. Теперь скрипт может ждать бумагу хоть все выходные!
+                watchdog_end = time.time() + (watchdog_min * 60) 
                 
                 if error_cycles % 20 == 0:
                     status_text = "НЕТ СЕТИ" if state.status == PrinterStatus.OFFLINE else state.status.value
