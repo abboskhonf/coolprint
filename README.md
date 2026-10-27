@@ -40,7 +40,9 @@ Print queue for a **Canon iR2425** (any SNMP-capable Canon) that prints in batch
 
    Names are up to you (e.g. `Canon A3 Short`), but they must match `config.ini` **exactly**. A4-only? Then you need just `Canon_Long`/`Canon_Short`/`Canon_None` and `available = A4`. **A3 needs its own printers**: the paper size comes from each printer's defaults, so an A4 printer cannot print A3. CoolPrint checks the names against Windows and tells you which one is missing.
 
-   Point every one at the printer's IP, set the paper size and duplex under *Printing Defaults*, and set the port to **LPR** with **Byte Counting Enabled**.
+   Point every one at the printer's IP and set the paper size and duplex under *Printing Defaults*.
+
+   **Shortcut**: create one working printer by hand (`Canon_Long`), then run `create_printers.bat` as administrator. It clones it (same driver and port) into the other five, sets paper and duplex, and checks the result as SYSTEM, i.e. what the service sees. Options: `-Source "<printer>"` to clone from another printer, `-NoA3` for A4 only.
 
 3. **Configure**: copy `config.example.ini` to `config.ini` and edit it (see [Configuration](#configuration)). No `config.ini` is needed for a simulator trial: set `simulate = true`.
 
