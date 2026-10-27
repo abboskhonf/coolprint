@@ -20,6 +20,7 @@ from typing import Optional
 
 import config
 import pdf_processor
+import print_service
 from jobs import EventHub, Job, JobQueue, JobStatus, QueueError
 from printer_backend import PrinterBackend
 from snmp_manager import PrinterState, PrinterStatus
@@ -442,6 +443,14 @@ class Engine:
         self.kick()
 
     # ── Создание заданий ────────────────────────────────────────────────────
+    def check_queue(self, paper: str, duplex: str) -> None:
+        """Бросает QueueError, если для формата/дуплекса нет принтера Windows (только реальный бэкенд)."""
+        if self.backend.name != "canon":
+            return
+        problem = print_service.check_queue(config.PRINTER_NAME, duplex, paper)
+        if problem:
+            raise QueueError(problem)
+
     def create_job(self, source: Path, name: str, owner: str = "web",
                    position: Optional[int] = None, **opts) -> Job:
         total = pdf_processor.get_total_pages(str(source))
@@ -457,6 +466,7 @@ class Engine:
             raise QueueError("duplex: long | short | none")
         if d["booklet"] not in ("none", "left", "right"):
             raise QueueError("booklet: none | left | right")
+        self.check_queue(paper, "short" if d["booklet"] != "none" else d["duplex"])
         page_from = max(1, int(d.get("page_from") or 1))
         page_to = min(total, int(d.get("page_to") or total))
         if page_from > page_to:

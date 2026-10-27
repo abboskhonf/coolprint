@@ -38,6 +38,8 @@ Print queue for a **Canon iR2425** (any SNMP-capable Canon) that prints in batch
    | `Canon_None` | A4 | one-sided |
    | `Canon_A3_Long` / `_Short` / `_None` | A3 | same three modes (only if you print A3) |
 
+   Names are up to you (e.g. `Canon A3 Short`), but they must match `config.ini` **exactly**. A4-only? Then you need just `Canon_Long`/`Canon_Short`/`Canon_None` and `available = A4`. **A3 needs its own printers**: the paper size comes from each printer's defaults, so an A4 printer cannot print A3. CoolPrint checks the names against Windows and tells you which one is missing.
+
    Point every one at the printer's IP, set the paper size and duplex under *Printing Defaults*, and set the port to **LPR** with **Byte Counting Enabled**.
 
 3. **Configure**: copy `config.example.ini` to `config.ini` and edit it (see [Configuration](#configuration)). No `config.ini` is needed for a simulator trial: set `simulate = true`.
@@ -139,6 +141,7 @@ All `/api/*` calls need the token (`X-Token: …`, `Authorization: Bearer …` o
 ## Troubleshooting
 
 - **Service won't start**: run `windows_service.py debug`; check `data\coolprint.log` and the Windows Event Log.
+- **"Принтер Windows «…» не найден"**: the printer named in `config.ini` does not exist (check spelling/spaces with `Get-Printer` in PowerShell, or create it as a machine-wide printer). Remove the `a3_*` keys and set `available = A4` if you don't print A3.
 - **Prints nothing / wrong queue**: names in `config.ini` must match the Windows printer names exactly, and the printers must be machine-wide.
 - **A3 comes out scaled wrong or the counter jumps by 2**: tune the A3 printer defaults and `a3_counter_weight`.
 - **Telegram silent**: check DNS/internet on the server (the bot retries with backoff) and that your ID is in `chat_id`.

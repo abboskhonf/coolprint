@@ -382,6 +382,7 @@ class TelegramUI:
             await edit(text, markup)
             await c.answer("Готово")
         elif kind == "ps":
+            eng.check_queue(parts[2], eng.queue.get(parts[1]).duplex)
             job = eng.queue.update(parts[1], paper=parts[2])
             await edit(*self.job_view(job))
             await c.answer(f"Бумага: {parts[2]}")

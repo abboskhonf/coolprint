@@ -181,6 +181,8 @@ class WebApi:
             patch["paper"] = patch["paper"].upper()
             if patch["paper"] not in config.supported_papers():
                 raise QueueError(f"Формат {patch['paper']} недоступен")
+        if patch.get("paper"):
+            self.engine.check_queue(patch["paper"], self.engine.queue.get(request.match_info["id"]).duplex)
         job = self.engine.queue.update(request.match_info["id"], **patch)
         self.engine.kick()
         return _json(job.to_dict())

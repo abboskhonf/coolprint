@@ -192,3 +192,19 @@ def test_create_job_validation(tmp_path, pdf):
     bad.write_text("nope")
     with pytest.raises(QueueError):
         eng.create_job(bad, "bad")
+
+
+async def test_missing_windows_printer_is_reported(tmp_path, pdf, monkeypatch):
+    import config
+    import print_service
+    from jobs import QueueError
+    monkeypatch.setattr(print_service, "installed_printers", lambda ttl=30.0: {"Canon_Long", "Canon_Short"})
+    monkeypatch.setattr(config, "printer_queue", lambda paper, duplex: {
+        ("A3", "short"): "Canon_A3_Short", ("A3", "long"): "Canon_Long"}.get((paper, duplex)))
+    backend = SimulatedPrinter()
+    backend.name = "canon"                                    # pretend to be the real backend
+    eng = Engine(JobQueue(tmp_path / "q.json"), backend,
+                 work_dir=tmp_path / "w", state_file=tmp_path / "s.json")
+    with pytest.raises(QueueError, match="Canon_A3_Short"):
+        eng.create_job(pdf(), "a.pdf", paper="A3", duplex="short")
+    eng.create_job(pdf(), "b.pdf", paper="A3", duplex="long")  # a3_long maps to an installed printer
