@@ -15,7 +15,9 @@ from typing import Optional, Dict, Any
 
 log = logging.getLogger(__name__)
 
-CSV_AUDIT_FILE = Path("print_history.csv")
+from config import DATA_DIR
+
+CSV_AUDIT_FILE = DATA_DIR / "print_history.csv"
 CSV_HEADERS = [
     "Timestamp", 
     "Chat_ID", 

@@ -9,3 +9,14 @@ bot_downloads/
 canon_batches_*/
 config.ini
 
+
+# CoolPrint runtime data (queue, uploads, token, logs, settings)
+data/
+*.log
+.pytest_cache/
+*.ds_store
+*.DS_Store
+" (2).ds_store"
+desktop*.ini
+0000*.txt
+PDFtoPrinter.exe

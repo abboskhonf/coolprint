@@ -41,7 +41,7 @@ log = logging.getLogger(__name__)
 
 # ── Папка батчей (по SHA-256 контента) ───────────────────────────────────────
 
-def get_batches_dir(pdf_path: str) -> Path:
+def get_batches_dir(pdf_path: str, base: "Path | None" = None) -> Path:
     h = hashlib.sha256()
     try:
         with open(pdf_path, "rb") as f:
@@ -50,7 +50,69 @@ def get_batches_dir(pdf_path: str) -> Path:
     except Exception:
         content_hash = hashlib.md5(pdf_path.encode()).hexdigest()[:8]
     stem = Path(pdf_path).stem[:20].replace(" ", "_")
-    return Path(f"canon_batches_{stem}_{content_hash}")
+    return (base or Path()) / f"canon_batches_{stem}_{content_hash}"
+
+
+def _sheet_size(paper: str) -> tuple[float, float]:
+    """Размер листа в портрете (ширина, высота), pt."""
+    from config import PAPER_SIZES
+    return PAPER_SIZES.get(paper.upper(), PAPER_SIZES["A4"])
+
+
+def _fit_page_to_paper(page: "PageObject", paper: str) -> "PageObject":
+    """
+    Масштабирует страницу так, чтобы она целиком вписалась в лист выбранного формата
+    (с центрированием). Ориентация листа подбирается под страницу.
+    Так формат гарантированно совпадает с лотком, даже если драйвер не масштабирует.
+    """
+    p = _clone_page(page)
+    p.transfer_rotation_to_content()
+    box = p.cropbox
+    bw, bh = float(box.width), float(box.height)
+    if bw == 0 or bh == 0:
+        return page
+    sw, sh = _sheet_size(paper)
+    if bw > bh:
+        sw, sh = sh, sw
+    scale = min(sw / bw, sh / bh)
+    dx = (sw - bw * scale) / 2.0
+    dy = (sh - bh * scale) / 2.0
+    sheet = PageObject.create_blank_page(width=sw, height=sh)
+    t = (Transformation()
+         .translate(-float(box.lower_left[0]), -float(box.lower_left[1]))
+         .scale(scale, scale)
+         .translate(dx, dy))
+    sheet.merge_transformed_page(p, t)
+    return sheet
+
+
+def skip_pages_in_chunks(chunks: "list[Path]", skip: int) -> "list[Path]":
+    """
+    Умное восстановление: отбрасывает первые `skip` уже напечатанных страниц пачки.
+    Целые чанки пропускаются, частично напечатанный обрезается в *_sliced_N.pdf.
+    """
+    if skip <= 0:
+        return list(chunks)
+    skipped = 0
+    out: "list[Path]" = []
+    for chunk in chunks:
+        n = expected_pages_for_batch(chunk)
+        if skipped + n <= skip:
+            skipped += n
+        elif skipped < skip:
+            cut = skip - skipped
+            sliced = chunk.with_name(f"{chunk.stem}_sliced_{cut}.pdf")
+            if not sliced.exists():
+                reader, writer = PdfReader(str(chunk)), PdfWriter()
+                for i in range(cut, len(reader.pages)):
+                    writer.add_page(reader.pages[i])
+                with open(sliced, "wb") as f:
+                    writer.write(f)
+            out.append(sliced.resolve())
+            skipped = skip
+        else:
+            out.append(chunk)
+    return out
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -119,17 +181,18 @@ def _place_page_on_sheet(
 def _make_booklet_imposition(
     pages: list,
     binding: str = "left",
+    paper: str = "A4",
 ) -> "list[PageObject]":
     """
     Saddle-stitch спуск полос.
-    N исходных страниц → N/2 ландшафтных листов A4.
+    N исходных страниц → N/2 ландшафтных листов выбранного формата (A4 или A3).
 
     Порядок (binding='left', лицо/оборот для каждого листа):
       лист i:  лицо  = [n-1-2i | 2i]
                оборот = [2i+1   | n-2-2i]
     """
-    A4_W   = 841.89   # A4 Landscape width  (pt)
-    A4_H   = 595.28   # A4 Landscape height (pt)
+    sheet_w, sheet_h = _sheet_size(paper)
+    A4_W, A4_H = sheet_h, sheet_w   # ландшафт: (длинная сторона, короткая); имена исторические
     SAFETY = 0.96     # 4% margin per half
 
     # Добиваем до кратного 4 пустыми страницами
@@ -207,6 +270,8 @@ def _split_pdf_sync(
     copies:       int,
     batches_dir:  Path,
     booklet_mode: str = "none",
+    paper:        str = "A4",
+    fit:          bool = False,
 ) -> "list[list[Path]]":
     if not PYPDF_AVAILABLE:
         raise ImportError("pip install pypdf")
@@ -218,8 +283,10 @@ def _split_pdf_sync(
 
     if is_booklet:
         log.info(f"Спуск полос для брошюры ({booklet_mode})...")
-        pages = _make_booklet_imposition(pages, binding=booklet_mode)
+        pages = _make_booklet_imposition(pages, binding=booklet_mode, paper=paper)
         duplex = "short"
+    elif fit:
+        pages = [_fit_page_to_paper(p, paper) for p in pages]
 
     total_per_copy = len(pages)
     step_b, step_c = _calc_steps(batch_size, chunk_size, duplex, is_booklet)
@@ -302,12 +369,14 @@ async def split_pdf_into_batches(
     copies:       int,
     batches_dir:  Path,
     booklet_mode: str = "none",
+    paper:        str = "A4",
+    fit:          bool = False,
 ) -> "list[list[Path]]":
     """Async обёртка: нарезка в thread-pool, не блокирует event loop."""
     return await asyncio.to_thread(
         _split_pdf_sync,
         pdf_path, batch_size, chunk_size, duplex,
-        copies, batches_dir, booklet_mode,
+        copies, batches_dir, booklet_mode, paper, fit,
     )
 
 

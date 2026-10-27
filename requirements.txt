@@ -1,0 +1,5 @@
+aiogram>=3.27,<4
+aiohttp>=3.13,<4
+pypdf>=6.0
+pysnmp-lextudio>=6.3
+pywin32>=311; sys_platform == "win32"

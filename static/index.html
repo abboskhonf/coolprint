@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CoolPrint</title>
+<style>
+:root{
+  --bg:#f4f5f7;--card:#fff;--ink:#1c2230;--mute:#6b7385;--line:#e3e6ec;--accent:#2563eb;--accent-ink:#fff;
+  --ok:#15803d;--warn:#b45309;--bad:#b91c1c;--ok-bg:#dcfce7;--warn-bg:#fef3c7;--bad-bg:#fee2e2;--info-bg:#dbeafe;--bar:#e3e6ec;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+  --bg:#12151c;--card:#1b2029;--ink:#e8ebf2;--mute:#9099ad;--line:#2b3240;--accent:#5b8cff;--accent-ink:#0b1020;
+  --ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--ok-bg:#14301f;--warn-bg:#3a2d0c;--bad-bg:#3b1717;--info-bg:#15264a;--bar:#2b3240}}
+:root[data-theme=dark]{
+  --bg:#12151c;--card:#1b2029;--ink:#e8ebf2;--mute:#9099ad;--line:#2b3240;--accent:#5b8cff;--accent-ink:#0b1020;
+  --ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--ok-bg:#14301f;--warn-bg:#3a2d0c;--bad-bg:#3b1717;--info-bg:#15264a;--bar:#2b3240}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:980px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:0 0 10px}
+header{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+header .sp{flex:1}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:600;background:var(--info-bg)}
+.chip.ok{background:var(--ok-bg);color:var(--ok)}.chip.warn{background:var(--warn-bg);color:var(--warn)}.chip.bad{background:var(--bad-bg);color:var(--bad)}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+button,select,input{font:inherit;color:inherit}
+button{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button.danger{color:var(--bad)}button.danger:hover{border-color:var(--bad)}
+button.icon{padding:4px 8px;min-width:32px}
+button:disabled{opacity:.45;cursor:default}
+label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mute)}
+input,select{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px;color:var(--ink);width:100%}
+.bar{height:8px;border-radius:99px;background:var(--bar);overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent);transition:width .4s}
+.bar.cool>i{background:var(--warn)}
+.big{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums}
+.mute{color:var(--mute)}.small{font-size:13px}
+#drop{border:2px dashed var(--line);border-radius:12px;padding:18px;text-align:center;color:var(--mute);cursor:pointer}
+#drop.over{border-color:var(--accent);color:var(--accent)}
+.job{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:var(--card)}
+.job.dragging{opacity:.4}.job.over{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.job.running{border-color:var(--accent)}
+.grip{cursor:grab;color:var(--mute);text-align:center;user-select:none}
+.job .name{font-weight:600;overflow-wrap:anywhere}
+.job .meta{margin-top:2px}
+.acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.err{color:var(--bad);font-size:13px;margin-top:4px}
+.tabs{display:flex;gap:6px;margin-bottom:10px}
+.tabs button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--mute);font-weight:600}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);padding:16px;max-width:460px;width:calc(100% - 32px)}
+dialog::backdrop{background:#0008}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90%}
+#toast.on{opacity:1}
+@media (max-width:560px){.job{grid-template-columns:22px 1fr}.acts{grid-column:1/-1;justify-content:flex-start}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>CoolPrint</h1>
+  <span id="pPrinter" class="chip"><i class="dot"></i><span>—</span></span>
+  <span id="pPhase" class="chip"></span>
+  <span class="sp"></span>
+  <button id="bPause"></button>
+  <button id="bStop" class="danger"></button>
+  <button id="bLang" class="icon" title="Language">RU/EN</button>
+</header>
+
+<section class="card" id="cCool">
+  <h2 data-t="cooling">Охлаждение</h2>
+  <div class="row" style="justify-content:space-between">
+    <div><div class="big" id="cdTime">—</div><div class="mute small" id="cdSub"></div></div>
+    <div class="row">
+      <button id="bSkip" data-t="skip">Пропустить</button>
+      <button id="bPlus5">+5 <span data-t="min">мин</span></button>
+    </div>
+  </div>
+  <div class="bar cool" style="margin-top:10px"><i id="cdBar" style="width:0"></i></div>
+  <div class="small mute" style="margin-top:10px" id="batchLine"></div>
+</section>
+
+<section class="card">
+  <h2 data-t="add">Добавить в очередь</h2>
+  <div id="drop"><span data-t="drop">Перетащите PDF сюда или нажмите для выбора</span><input id="file" type="file" accept="application/pdf,.pdf" multiple hidden></div>
+  <div class="grid" style="margin-top:12px" id="opts">
+    <label><span data-t="paper">Бумага</span><select id="oPaper"></select></label>
+    <label><span data-t="duplex">Дуплекс</span><select id="oDuplex"><option value="long">long</option><option value="short">short</option><option value="none">none</option></select></label>
+    <label><span data-t="booklet">Брошюра</span><select id="oBooklet"><option value="none">—</option><option value="left">left</option><option value="right">right</option></select></label>
+    <label><span data-t="copies">Копии</span><input id="oCopies" type="number" min="1" max="99"></label>
+    <label><span data-t="batch">Пачка, стр.</span><input id="oBatch" type="number" min="2" max="400"></label>
+    <label><span data-t="cooldown">Пауза, мин</span><input id="oCool" type="number" min="0" max="240"></label>
+    <label><span data-t="from">Со стр.</span><input id="oFrom" type="number" min="1" placeholder="1"></label>
+    <label><span data-t="to">По стр.</span><input id="oTo" type="number" min="1" placeholder="∞"></label>
+    <label><span data-t="where">Куда</span><select id="oPos"><option value="" data-t="tail">в конец</option><option value="0" data-t="head">в начало</option></select></label>
+  </div>
+  <div class="row small" style="margin-top:8px"><button id="bSaveDef" data-t="saveDef">Сделать значениями по умолчанию</button><span class="mute" id="upMsg"></span></div>
+</section>
+
+<section class="card">
+  <div class="tabs"><button class="on" data-tab="queue" data-t="queue">Очередь</button><button data-tab="done" data-t="finished">Завершённые</button><button data-tab="hist" data-t="history">Журнал</button></div>
+  <div id="tQueue"></div>
+  <div id="tDone" hidden></div>
+  <div id="tHist" hidden></div>
+</section>
+</main>
+
+<dialog id="dlgEdit">
+  <form method="dialog" id="fEdit">
+    <h2 data-t="edit">Параметры задания</h2>
+    <div class="grid" id="eGrid"></div>
+    <p class="small mute" id="eNote"></p>
+    <div class="row" style="justify-content:flex-end"><button value="cancel" data-t="close">Закрыть</button><button class="primary" value="ok" data-t="save">Сохранить</button></div>
+  </form>
+</dialog>
+<dialog id="dlgTok">
+  <form method="dialog">
+    <h2>Token</h2>
+    <p class="small mute" id="tokHelp"></p>
+    <input id="tokIn" type="password" autocomplete="off">
+    <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="primary" value="ok">OK</button></div>
+  </form>
+</dialog>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const I18N = {
+  ru:{cooling:"Охлаждение",skip:"Пропустить",min:"мин",add:"Добавить в очередь",drop:"Перетащите PDF сюда или нажмите для выбора",
+    paper:"Бумага",duplex:"Дуплекс",booklet:"Брошюра",copies:"Копии",batch:"Пачка, стр.",cooldown:"Пауза, мин",from:"Со стр.",to:"По стр.",
+    where:"Куда",tail:"в конец",head:"в начало",saveDef:"Сделать значениями по умолчанию",queue:"Очередь",finished:"Завершённые",history:"Журнал",
+    edit:"Параметры задания",close:"Закрыть",save:"Сохранить",pause:"Пауза очереди",resume:"Продолжить",stop:"Аварийный стоп",
+    paused:"Очередь на паузе",idle:"Простой",preparing:"Подготовка",cooling_p:"Охлаждение",waiting_printer:"Ждём принтер",sending:"Отправка",printing:"Печать",
+    empty:"Очередь пуста",noDone:"Пока ничего",ready:"Готов",nocool:"Охлаждение не требуется",endsAt:"до",batch_l:"Пачка",of:"из",pages:"стр.",
+    hold:"Пауза",release:"Вернуть",cancel:"Отмена",retry:"Повторить",del:"Удалить",edit_b:"Изменить",eta:"окончание ≈",
+    lockedNote:"После начала печати нельзя менять бумагу, дуплекс, брошюру, копии, диапазон и размер пачки.",
+    skipAsk:"Пропустить охлаждение? Фьюзер может перегреться.",stopAsk:"Остановить печать, очистить спулер и поставить очередь на паузу?",
+    cancelAsk:"Отменить задание?",delAsk:"Удалить задание из списка?",tokHelp:"Введите токен доступа (файл data/web_token.txt или [web] token в config.ini).",
+    uploaded:"Добавлено",saved:"Сохранено",counter:"счётчик",
+    st:{queued:"в очереди",running:"печатается",held:"на удержании",done:"готово",failed:"ошибка",cancelled:"отменено"},
+    ps:{idle:"Готов",sleep:"Сон",printing:"Печатает",warming_up:"Прогрев",offline:"Нет связи",error:"Ошибка",warning:"Внимание",unknown:"Неизвестно"},
+    cols:{Timestamp:"Время",File_Name:"Файл",Status:"Статус",Batches_Done:"Пачек",Notes:"Заметки"},skipPages:"Уже напечатано (стр. текущей пачки)"},
+  en:{cooling:"Cooldown",skip:"Skip",min:"min",add:"Add to queue",drop:"Drop a PDF here or click to choose",
+    paper:"Paper",duplex:"Duplex",booklet:"Booklet",copies:"Copies",batch:"Batch, pages",cooldown:"Pause, min",from:"From page",to:"To page",
+    where:"Where",tail:"to the end",head:"to the front",saveDef:"Save as defaults",queue:"Queue",finished:"Finished",history:"Log",
+    edit:"Job settings",close:"Close",save:"Save",pause:"Pause queue",resume:"Resume",stop:"Emergency stop",
+    paused:"Queue paused",idle:"Idle",preparing:"Preparing",cooling_p:"Cooling",waiting_printer:"Waiting for printer",sending:"Sending",printing:"Printing",
+    empty:"Queue is empty",noDone:"Nothing yet",ready:"Ready",nocool:"No cooldown active",endsAt:"until",batch_l:"Batch",of:"of",pages:"pp.",
+    hold:"Hold",release:"Release",cancel:"Cancel",retry:"Retry",del:"Delete",edit_b:"Edit",eta:"done ≈",
+    lockedNote:"Paper, duplex, booklet, copies, page range and batch size can't change once printing has started.",
+    skipAsk:"Skip cooldown? The fuser may overheat.",stopAsk:"Stop printing, purge the spooler and pause the queue?",
+    cancelAsk:"Cancel this job?",delAsk:"Remove job from the list?",tokHelp:"Enter the access token (data/web_token.txt or [web] token in config.ini).",
+    uploaded:"Added",saved:"Saved",counter:"counter",
+    st:{queued:"queued",running:"printing",held:"on hold",done:"done",failed:"failed",cancelled:"cancelled"},
+    ps:{idle:"Ready",sleep:"Sleep",printing:"Printing",warming_up:"Warming up",offline:"Offline",error:"Error",warning:"Warning",unknown:"Unknown"},
+    cols:{Timestamp:"Time",File_Name:"File",Status:"Status",Batches_Done:"Batches",Notes:"Notes"},skipPages:"Already printed (pages of current batch)"}
+};
+let lang = (()=>{try{return localStorage.getItem("cp_lang")}catch(e){return null}})() || ((navigator.language||"").startsWith("ru")?"ru":"en");
+const T = k => (I18N[lang][k] ?? k);
+const $ = id => document.getElementById(id);
+const PS_CLS = {idle:"ok",sleep:"ok",printing:"",warming_up:"warn",offline:"bad",error:"bad",warning:"warn",unknown:"warn"};
+
+let S = null, skew = 0, token = (()=>{try{return localStorage.getItem("cp_token")||""}catch(e){return ""}})(), tab = "queue", dragId = null, editId = null;
+
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("on");clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove("on"),3200)}
+function fmtDur(s){s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;
+  return h?`${h}:${String(m).padStart(2,"0")}:${String(x).padStart(2,"0")}`:`${m}:${String(x).padStart(2,"0")}`}
+function fmtClock(ts){return new Date(ts*1000).toLocaleString(lang==="ru"?"ru-RU":"en-GB",{hour:"2-digit",minute:"2-digit",day:"2-digit",month:"2-digit"})}
+function el(tag, props, ...kids){const e=document.createElement(tag);
+  for(const [k,v] of Object.entries(props||{})){ if(k==="class")e.className=v; else if(k.startsWith("on"))e.addEventListener(k.slice(2),v); else if(v!==false&&v!=null)e.setAttribute(k,v===true?"":v)}
+  for(const c of kids.flat()) if(c!=null) e.append(c.nodeType?c:document.createTextNode(c)); return e}
+
+async function api(path, opts={}){
+  const h = Object.assign({"X-Token":token}, opts.headers||{});
+  if(opts.json!==undefined){h["Content-Type"]="application/json";opts.body=JSON.stringify(opts.json)}
+  let r; try{ r = await fetch(path,{method:opts.method||"GET",headers:h,body:opts.body}) }catch(e){ toast("Нет связи / offline"); throw e }
+  if(r.status===401){ await askToken(); return api(path,opts) }
+  const data = await r.json().catch(()=>({}));
+  if(!r.ok){ toast(data.error||("HTTP "+r.status)); throw new Error(data.error||r.status) }
+  return data;
+}
+function askToken(){return new Promise(res=>{
+  const d=$("dlgTok"); $("tokHelp").textContent=T("tokHelp"); $("tokIn").value="";
+  d.addEventListener("close",()=>{token=$("tokIn").value.trim();try{localStorage.setItem("cp_token",token)}catch(e){};res();reconnect()},{once:true});
+  d.showModal()})}
+
+// ── Рендер ──────────────────────────────────────────────────────────────────
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.querySelectorAll("[data-t]").forEach(n=>{ if(n.tagName==="OPTION"||n.children.length===0||n.dataset.t) n.textContent=T(n.dataset.t) });
+  $("bPlus5").innerHTML="+5 "+T("min");
+  if(S) render();
+}
+function render(){
+  if(!S) return;
+  const p=S.printer, pc=$("pPrinter");
+  pc.className="chip "+(PS_CLS[p.status]??""); pc.lastChild.textContent=`${T("ps")[p.status]||p.status} · ${T("counter")} ${p.page_count}`+(S.backend==="simulator"?" · SIM":"");
+  pc.title=p.error||"";
+  const ph=$("pPhase"); ph.textContent=S.paused?T("paused"):T({cooling:"cooling_p"}[S.phase]||S.phase); ph.className="chip "+(S.paused?"warn":S.phase==="printing"?"ok":"");
+  $("bPause").textContent=S.paused?T("resume"):T("pause"); $("bPause").className=S.paused?"primary":"";
+  $("bStop").textContent=T("stop");
+  const cur=S.jobs.find(j=>j.id===S.current), b=S.batch;
+  $("batchLine").textContent = cur&&b.index ? `${cur.name} — ${T("batch_l")} ${b.index} ${T("of")} ${b.total}`+(b.expected?` · ${b.printed}/${b.expected} ${T("pages")}`:"") : "";
+  const sel=$("oPaper"), prev=sel.value;
+  sel.replaceChildren(...S.papers.map(x=>el("option",{value:x},x))); sel.value=prev||S.defaults.paper;
+  renderLists(); tick();
+}
+function tick(){
+  if(!S) return;
+  const now=Date.now()/1000+skew, rem=Math.max(0,(S.cooldown.until||0)-now);
+  const total=S.cooldown.total||1;
+  $("cdTime").textContent = rem>0 ? fmtDur(rem) : T("ready");
+  $("cdSub").textContent = rem>0 ? `${T("endsAt")} ${fmtClock(S.cooldown.until)}` : T("nocool");
+  $("cdBar").style.width = rem>0 ? (100*(1-rem/total)).toFixed(1)+"%" : "0";
+  $("bSkip").disabled = rem<=0;
+}
+setInterval(tick,500);
+
+function jobCard(j, idx, active){
+  const sub=[`${j.paper}`,`${j.duplex}`+(j.booklet!=="none"?` · booklet ${j.booklet}`:""),`${j.pages_selected} ${T("pages")}`+(j.copies>1?` ×${j.copies}`:""),
+    `${j.batch_size}/${j.cooldown} ${T("min")}`].join(" · ");
+  const prog=j.batches_total?`${j.batches_done}/${j.batches_total}`:"";
+  const eta=S.jobs.length&&j.eta?` · ${T("eta")} ${fmtClock(j.eta)}`:"";
+  const badge=el("span",{class:"chip "+({running:"",queued:"",held:"warn",done:"ok",failed:"bad",cancelled:"warn"}[j.status]||"")},T("st")[j.status]||j.status);
+  const card=el("div",{class:"job"+(j.status==="running"?" running":""),draggable:active,"data-id":j.id},
+    el("div",{class:"grip"},active?"⋮⋮":""),
+    el("div",{},
+      el("div",{class:"name"},(active?`${idx+1}. `:"")+j.name),
+      el("div",{class:"meta small mute"},sub),
+      j.batches_total||j.status==="running"?el("div",{class:"bar",style:"margin-top:6px"},el("i",{style:`width:${Math.round(j.progress*100)}%`})):null,
+      el("div",{class:"meta small"},badge," ",prog,eta),
+      j.error?el("div",{class:"err"},j.error):null),
+    el("div",{class:"acts"}, actions(j,idx,active)));
+  if(active){
+    card.addEventListener("dragstart",e=>{dragId=j.id;card.classList.add("dragging");e.dataTransfer.effectAllowed="move"});
+    card.addEventListener("dragend",()=>{dragId=null;card.classList.remove("dragging");document.querySelectorAll(".job.over").forEach(n=>n.classList.remove("over"))});
+    card.addEventListener("dragover",e=>{if(dragId){e.preventDefault();card.classList.add("over")}});
+    card.addEventListener("dragleave",()=>card.classList.remove("over"));
+    card.addEventListener("drop",e=>{e.preventDefault();card.classList.remove("over");if(dragId&&dragId!==j.id) act(dragId,"move",{to:idx})});
+  }
+  return card;
+}
+function actions(j,idx,active){
+  const B=(txt,fn,cls,title)=>el("button",{class:cls||"",title:title||"",onclick:fn},txt), a=[];
+  if(active){
+    a.push(B("↑",()=>act(j.id,"up"),"icon"),B("↓",()=>act(j.id,"down"),"icon"),B("⇈",()=>act(j.id,"top"),"icon","top"));
+    a.push(B(T("edit_b"),()=>openEdit(j)));
+    if(j.status==="held") a.push(B(T("release"),()=>act(j.id,"release")));
+    else a.push(B(T("hold"),()=>act(j.id,"hold")));
+    a.push(B(T("cancel"),()=>{if(confirm(T("cancelAsk")))act(j.id,"cancel")},"danger"));
+  } else {
+    if(j.status==="failed"||j.status==="cancelled") a.push(B(T("retry"),()=>act(j.id,"retry"),"primary"));
+    a.push(B(T("del"),()=>{if(confirm(T("delAsk")))act(j.id,"delete")},"danger"));
+  }
+  return a;
+}
+function renderLists(){
+  const act_=S.jobs.filter(j=>["queued","running","held"].includes(j.status)), done=S.jobs.filter(j=>!act_.includes(j)).reverse();
+  if(!dragId){
+    $("tQueue").replaceChildren(...(act_.length?act_.map((j,i)=>jobCard(j,i,true)):[el("div",{class:"mute"},T("empty"))]));
+    $("tDone").replaceChildren(...(done.length?done.map(j=>jobCard(j,0,false)):[el("div",{class:"mute"},T("noDone"))]));
+  }
+}
+async function loadHistory(){
+  const {rows}=await api("/api/history?limit=100");
+  const keys=["Timestamp","File_Name","Status","Batches_Done","Notes"], names=I18N[lang].cols;
+  $("tHist").replaceChildren(el("table",{},el("tr",{},keys.map(k=>el("th",{},names[k]))),
+    rows.map(r=>el("tr",{},keys.map(k=>el("td",{},k==="Batches_Done"?`${r.Batches_Done}/${r.Total_Batches}`:(r[k]||"")))))));
+}
+
+// ── Действия ────────────────────────────────────────────────────────────────
+async function act(id,a,body){ await api(`/api/jobs/${id}/${a}`,{method:"POST",json:body||{}}); refresh() }
+async function refresh(){ try{ S=await api("/api/status"); skew=S.now-Date.now()/1000; render() }catch(e){} }
+
+$("bPause").onclick=async()=>{await api("/api/queue/"+(S.paused?"resume":"pause"),{method:"POST",json:{}});refresh()};
+$("bStop").onclick=async()=>{if(confirm(T("stopAsk"))){await api("/api/emergency-stop",{method:"POST",json:{}});refresh()}};
+$("bSkip").onclick=async()=>{if(confirm(T("skipAsk"))){await api("/api/cooldown/skip",{method:"POST",json:{}});refresh()}};
+$("bPlus5").onclick=async()=>{await api("/api/cooldown/add",{method:"POST",json:{minutes:5}});refresh()};
+$("bLang").onclick=()=>{lang=lang==="ru"?"en":"ru";try{localStorage.setItem("cp_lang",lang)}catch(e){};applyLang();if(tab==="hist")loadHistory()};
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{
+  tab=b.dataset.tab; document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x===b));
+  $("tQueue").hidden=tab!=="queue"; $("tDone").hidden=tab!=="done"; $("tHist").hidden=tab!=="hist"; if(tab==="hist")loadHistory()});
+
+// Параметры нового задания
+function fillOpts(d){ $("oPaper").value=d.paper; $("oDuplex").value=d.duplex; $("oBooklet").value=d.booklet; $("oCopies").value=d.copies; $("oBatch").value=d.batch_size; $("oCool").value=d.cooldown }
+$("bSaveDef").onclick=async()=>{
+  await api("/api/defaults",{method:"PUT",json:{paper:$("oPaper").value,duplex:$("oDuplex").value,booklet:$("oBooklet").value,copies:+$("oCopies").value,batch_size:+$("oBatch").value,cooldown:+$("oCool").value}});
+  toast(T("saved")); refresh()};
+$("oBooklet").onchange=()=>{ if($("oBooklet").value!=="none") $("oDuplex").value="short" };
+
+// Загрузка
+async function upload(files){
+  for(const f of files){
+    const fd=new FormData(); fd.append("file",f);
+    for(const [k,id] of [["paper","oPaper"],["duplex","oDuplex"],["booklet","oBooklet"],["copies","oCopies"],["batch_size","oBatch"],["cooldown","oCool"],["page_from","oFrom"],["page_to","oTo"],["position","oPos"]])
+      fd.append(k,$(id).value);
+    $("upMsg").textContent=f.name+" …";
+    try{ const j=await api("/api/jobs",{method:"POST",body:fd}); toast(`${T("uploaded")}: ${j.name} (${j.pages_selected} ${T("pages")})`) }catch(e){}
+    $("upMsg").textContent="";
+  }
+  $("file").value=""; refresh();
+}
+const drop=$("drop");
+drop.onclick=()=>$("file").click();
+$("file").onchange=e=>upload([...e.target.files]);
+for(const ev of ["dragenter","dragover"]) drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over")});
+for(const ev of ["dragleave","drop"]) drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over")});
+drop.addEventListener("drop",e=>upload([...e.dataTransfer.files].filter(f=>/\.pdf$/i.test(f.name))));
+
+// Редактирование
+function openEdit(j){
+  editId=j.id;
+  const started=j.status==="running"||j.batches_done>0, g=$("eGrid"); g.replaceChildren();
+  const F=(id,label,node)=>{node.id="e_"+id;g.append(el("label",{},label,node))};
+  const sel=(opts,val,dis)=>{const s=el("select",{disabled:dis},opts.map(o=>el("option",{value:o},o)));s.value=val;return s};
+  const num=(val,min,max,dis)=>el("input",{type:"number",min,max,value:val,disabled:dis});
+  F("name",lang==="ru"?"Название":"Name",el("input",{value:j.name}));
+  F("paper",T("paper"),sel(S.papers,j.paper,started)); F("duplex",T("duplex"),sel(["long","short","none"],j.duplex,started));
+  F("booklet",T("booklet"),sel(["none","left","right"],j.booklet,started)); F("copies",T("copies"),num(j.copies,1,99,started));
+  F("batch_size",T("batch"),num(j.batch_size,2,400,started)); F("cooldown",T("cooldown"),num(j.cooldown,0,240,false));
+  F("page_from",T("from"),num(j.page_from,1,j.total_pages,started)); F("page_to",T("to"),num(j.page_to||j.total_pages,1,j.total_pages,started));
+  if(j.recovery_skip||j.status==="held") F("recovery_skip",T("skipPages"),num(j.recovery_skip,0,10000,false));
+  $("eNote").textContent=started?T("lockedNote"):"";
+  $("dlgEdit").showModal();
+}
+$("dlgEdit").addEventListener("close",async()=>{
+  if($("dlgEdit").returnValue!=="ok"||!editId) return;
+  const v=id=>{const n=$("e_"+id);return n?n.value:undefined}, body={};
+  for(const k of ["name","paper","duplex","booklet","copies","batch_size","cooldown","page_from","page_to","recovery_skip"]) if(v(k)!==undefined) body[k]=v(k);
+  const j=S.jobs.find(x=>x.id===editId); if(j&&+body.page_to===j.total_pages) body.page_to=0;
+  try{ await api("/api/jobs/"+editId,{method:"PATCH",json:body}); toast(T("saved")) }catch(e){}
+  editId=null; refresh();
+});
+
+// ── Живые события ───────────────────────────────────────────────────────────
+let es=null, poll=null;
+function reconnect(){
+  if(es) es.close();
+  es=new EventSource("/api/events?token="+encodeURIComponent(token));
+  es.onmessage=e=>{ const ev=JSON.parse(e.data);
+    if(ev.kind==="cooldown"&&S){ S.cooldown={remaining:ev.remaining,total:ev.total,until:ev.until}; skew=ev.ts-Date.now()/1000; tick(); return }
+    if(ev.kind==="progress"&&S){ S.batch.printed=ev.printed; S.batch.expected=ev.expected; render(); return }
+    if(ev.kind==="job_done") toast("✔ "+ev.job.name);
+    if(ev.kind==="job_failed") toast("✖ "+ev.job.name+": "+ev.error);
+    refresh() };
+  es.onerror=()=>{};
+}
+(async()=>{
+  applyLang();
+  await refresh();
+  if(!S){ await askToken(); await refresh() }
+  if(S){ fillOpts(S.defaults) }
+  reconnect();
+  clearInterval(poll); poll=setInterval(()=>{ if(!dragId) refresh() },8000);
+})();
+</script>
+</body>
+</html>

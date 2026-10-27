@@ -1,129 +1,161 @@
-# 🖨 CoolPrint v7.6 (Enterprise Edition)
+# 🖨 CoolPrint v8
 
-**Бот-Оркестратор для умного управления печатью через Telegram.**
-Специально разработан для высоких нагрузок, нестабильного Wi-Fi и защиты корпоративных принтеров (на примере Canon iR2425) от перегрева. Отправил PDF → Настроил параметры → Получил live-статус и готовую печать.
+Print queue for a **Canon iR2425** (any SNMP-capable Canon) that prints in batches with **cooldown pauses** so the fuser does not overheat. It runs as a **Windows service** and is controlled from a **web interface** and a **Telegram bot**.
 
----
+## Features
 
-## ✨ Ключевые архитектурные особенности
+- **Persistent queue** (`data/queue.json`): upload PDFs, drag to reorder (or ↑ ↓ / top), hold, cancel, retry, edit. Reordering takes effect at the next batch boundary, so it also works while printing.
+- **Paper A4 / A3** per job, plus duplex (long/short/none), copies, page range, booklet, batch size and cooldown. Defaults can be changed live.
+- **Shared cooldown** between batches of *all* jobs; survives a service restart; can be skipped or extended (+5 min).
+- **Smart recovery**: after a jam / paper-out / network loss the exact number of printed sheets is read over SNMP and skipped on retry. A job interrupted by a restart mid-batch is put on **hold**, never reprinted blindly.
+- **Printer watchdog**: OFFLINE / ERROR / WARNING freezes timeouts and waits for a human; a batch with no counter growth for `lost_job_min` is failed.
+- **Emergency stop** (pauses the queue, cancels the job, purges the Windows spooler), history (`data/print_history.csv`), ETA per job.
+- **Telegram** with admin and viewer roles, live status, notifications, full queue control.
+- **Simulator mode** (`simulate = true`) to try everything without a printer.
 
-* 🚀 **Умная нарезка и Микро-батчинг:** Автоматическое разделение больших файлов на пачки, а пачек — на мелкие чанки. Позволяет мгновенно передавать тяжелые файлы по медленному Wi-Fi, не забивая Spooler Windows.
-* 🔄 **Smart Recovery (Хирургическое восстановление):** Если печать прервалась (замятие, кончилась бумага, сбой сети), бот опрашивает SNMP, вычисляет точное количество вышедших листов, **физически отрезает их из PDF** и предлагает продолжить ровно с места обрыва в один клик.
-* ⏱ **Time Freeze (Заморозка времени):** При физических ошибках (нет бумаги, оффлайн) бот не сбрасывает задание по таймауту, а бесконечно ждет вмешательства человека, ставя таймеры на паузу.
-* 📑 **Идеальный Booklet (Спуск полос):** Математически точная сборка брошюр с жесткой нормализацией координат (`MediaBox`). Гарантирует отсутствие срезанных краев и смещений.
-* 🖨 **Векторная маршрутизация:** Отказ от тяжелой растеризации. Скрипт маршрутизирует легкие векторы через логические очереди Windows (Logical Printers), сохраняя вес передаваемых файлов в пределах 1-2 МБ.
-* 🌡 **Контроль перегрева:** Настраиваемые паузы охлаждения между пачками для защиты фьюзера (печки) принтера.
+## Requirements
 
----
+- Windows 10/11 or Server (for the real service). macOS/Linux work for development, simulator mode and `lp` printing.
+- **Python 3.11 – 3.13 recommended** (64-bit). Newer versions may lack `pywin32` wheels.
+- [`PDFtoPrinter.exe`](http://www.columbia.edu/~em36/pdftoprinter.html) in the project folder (Windows only; not stored in git).
+- Canon reachable over the network with **SNMP enabled** (community `public` by default).
 
-## 🛠 Установка
+## Installation (Windows)
 
-1. **Клонируйте репозиторий:**
-    ```bash
-    git clone https://github.com/yourusername/coolprint.git
-    cd coolprint
-    ```
+1. **Get the code**
+   ```bat
+   git clone git@github.com:abboskhonf/coolprint.git C:\coolprint
+   cd C:\coolprint
+   ```
+   (or `git pull` in an existing checkout). Put `PDFtoPrinter.exe` into `C:\coolprint`.
 
-2. **Создайте виртуальное окружение и установите зависимости:**
-    ```bash
-    python -m venv .venv
-    source .venv/bin/activate  # Windows: .venv\Scripts\activate
-    pip install pypdf pysnmp-lextudio aiohttp aiogram
-    ```
+2. **Create the logical printers** (Control Panel → Devices and Printers). They must be **machine-wide**: the service runs in session 0 and cannot see per-user printers.
 
-3. **Загрузите PDFtoPrinter:**
-    Скачайте легковесную утилиту `PDFtoPrinter.exe` и положите её в корень проекта. Она выступает идеальным курьером между Python и Windows Spooler.
+   | Printer name | Paper | Duplex |
+   | :--- | :--- | :--- |
+   | `Canon_Long` | A4 | two-sided, long edge |
+   | `Canon_Short` | A4 | two-sided, short edge |
+   | `Canon_None` | A4 | one-sided |
+   | `Canon_A3_Long` / `_Short` / `_None` | A3 | same three modes (only if you print A3) |
 
----
+   Point every one at the printer's IP, set the paper size and duplex under *Printing Defaults*, and set the port to **LPR** with **Byte Counting Enabled**.
 
-## 🖥 Настройка логических принтеров (Только для Windows)
+3. **Configure**: copy `config.example.ini` to `config.ini` and edit it (see [Configuration](#configuration)). No `config.ini` is needed for a simulator trial: set `simulate = true`.
 
-Для идеальной передачи файлов без искажений и сжатия, создайте в Windows **3 виртуальных принтера**, смотрящих на один IP-адрес вашего аппарата (например, `192.168.68.114`).
-Задайте им жесткие «Умолчания печати» (Printing Defaults) в свойствах драйвера:
+4. **Try it in a console first** (optional but recommended):
+   ```bat
+   python -m venv .venv
+   .venv\Scripts\pip install -r requirements.txt
+   .venv\Scripts\python coolprint_app.py
+   ```
+   Open `http://localhost:8765/`, enter the token from `data\web_token.txt`, stop with Ctrl+C.
 
-1.  **`Canon_Long`** — Формат A4, Двусторонняя печать (Длинный край).
-2.  **`Canon_Short`** — Формат A4, Двусторонняя печать (Короткий край).
-3.  **`Canon_None`** — Формат A4, Односторонняя печать.
+5. **Install the service** — right-click `install_service.bat` → *Run as administrator*. It creates the venv, installs dependencies, registers the `CoolPrint` service (auto-start, restart on failure), opens TCP 8765 for the *private* firewall profile and starts it.
 
-*Важно: Настройте порты принтеров на протокол **LPR** с включенным «Подсчетом байт» (Byte Counting Enabled) для устойчивости к обрывам Wi-Fi.*
+   Manual control: `.venv\Scripts\python windows_service.py start | stop | restart | remove`, or `services.msc`.
 
----
+   Debug a service problem in a console: `.venv\Scripts\python windows_service.py debug`.
 
-## ⚙️ Конфигурация (`config.ini`)
+6. **Open the UI**: `http://<pc-address>:8765/`. The access token is `[web] token` from `config.ini`, or the generated `data\web_token.txt`. Logs: `data\coolprint.log`.
 
-Создайте или отредактируйте `config.ini` в корне проекта:
-
-```ini
-[telegram]
-token = 123456789:ABC...       ; Токен от @BotFather
-chat_id = 987654321             ; Ваш ID (или ID группы администраторов)
-download_timeout = 300          ; Таймаут загрузки файлов от Telegram (сек)
-
-[printer]
-ip = 192.168.68.114             ; IP принтера в локальной сети
-# Маршрутизация на созданные логические принтеры Windows
-name_long = Canon_Long
-name_short = Canon_Short
-name_none = Canon_None
-
-[snmp]
-community = public              ; SNMP Community (по умолчанию public)
-port = 161
-wake_timeout_sec = 360          ; Максимальное время прогрева печки (сек)
-print_watchdog_min = 40         ; Таймаут на печать одной пачки (мин)
-
-[print]
-batch_size = 64                 ; Размер одной пачки (страниц PDF)
-cooldown_minutes = 25           ; Пауза для охлаждения печки (мин)
-chunks_per_batch = 4            ; Количество микро-батчей для стабильности Wi-Fi
-```
-
----
-
-## 🚀 Запуск
-
-Запустите бота как обычный Python-скрипт (рекомендуется настроить автозапуск через Task Scheduler или systemd):
+### macOS / Linux (development)
 
 ```bash
-python bot.py
+python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+COOLPRINT_SIMULATE=1 .venv/bin/python coolprint_app.py
+.venv/bin/python -m pytest
 ```
 
----
+## Configuration
 
-## 📖 Использование
+`config.ini` (see `config.example.ini` for every option). The important parts:
 
-### Команды бота
-| Команда | Описание |
+```ini
+[printer]
+ip = 192.168.1.50
+name_long = Canon_Long        ; A4 logical printers (Windows)
+name_short = Canon_Short
+name_none = Canon_None
+; simulate = true             ; no real printer
+
+[paper]
+available = A4,A3
+a3_long = Canon_A3_Long
+a3_short = Canon_A3_Short
+a3_none = Canon_A3_None
+a3_counter_weight = 1         ; SNMP counter clicks per A3 side (often 2 on Canon)
+fit_to_paper = true
+
+[print]                       ; defaults for new jobs
+batch_size = 16
+cooldown_minutes = 6
+duplex = long
+
+[telegram]
+token = <from @BotFather>
+chat_id = 111111111           ; admins (comma separated)
+viewer_ids = 222222222        ; read-only
+
+[web]
+host = 0.0.0.0
+port = 8765
+token =                       ; empty = generated in data/web_token.txt
+
+[service]
+on_failure = halt             ; halt = pause queue after a failed job; continue = next job
+```
+
+`config.ini` holds secrets: never commit it, and revoke any bot token that has been committed.
+
+## Using it
+
+**Web UI**: drop a PDF on the upload area, choose paper / duplex / copies / pages / booklet, then drag jobs to reorder. Pause/resume the queue, skip or extend the cooldown, emergency stop, finished jobs and log tabs. RU/EN and dark mode.
+
+**Telegram**: send a PDF → choose options → *add to end* or *front of queue*.
+
+| Command | Action |
 | :--- | :--- |
-| `/start` | Запуск бота и вывод приветствия. |
-| `/status` | Опрос принтера по SNMP: текущий статус (Готов/Печать/Ошибка), счётчик страниц и информация об активном задании. |
-| `/stop` | Мягкая остановка. Принтер допечатает текущую пачку, бот сохранит прогресс и остановится. |
-| `/cancel` | Жесткая отмена настройки или очистка памяти от текущего прерванного задания. |
+| `/status` | live status: printer, cooldown, current batch (admin gets buttons) |
+| `/queue` | queue with ⬆ ⬇ reorder, hold, cancel, retry, per-job paper |
+| `/pause`, `/resume` | pause the queue (current batch finishes) / resume |
+| `/skip` | skip the cooldown (asks for confirmation) |
+| `/stop` | emergency stop (asks for confirmation) |
+| `/settings` | defaults for new jobs |
+| `/quiet` | no per-batch messages |
 
-### Как печатать
-1.  Перешлите любой **PDF-файл** боту. (Лимит Telegram: 20 МБ).
-2.  Используйте инлайн-клавиатуру для настройки:
-    * **Режим документа:** Обычный / Брошюра (Спуск полос).
-    * **Дуплекс:** Односторонняя, по длинному/короткому краю.
-    * **Диапазон:** Печать всего файла или конкретных страниц (например, `12-45`).
-    * **Партия и Пауза:** Тонкая настройка щадящего режима.
-3.  Нажмите **🚀 Запустить печать**.
-4.  Наблюдайте за *Live-статусом* прогресса. 
-5.  В случае сбоя, нажмите появившуюся кнопку **🛠 Умное восстановление**.
+Telegram's bot API cannot download files over 20 MB: use the web upload for those. Do not run another bot on the same token.
 
----
+## REST API
 
-## 📂 Структура проекта (Clean Architecture)
+All `/api/*` calls need the token (`X-Token: …`, `Authorization: Bearer …` or `?token=`).
 
-* `bot.py` — Точка входа, инициализация `aiogram` и регистрация роутеров.
-* `handlers.py` — Управление диалогами, инлайн-кнопками и меню умного восстановления.
-* `print_job.py` — Асинхронный оркестратор сессии. Контролирует SNMP, таймеры охлаждения и `Time Freeze`.
-* `print_service.py` — Взаимодействие с ОС. Маршрутизация на логические принтеры через `PDFtoPrinter.exe`.
-* `pdf_processor.py` — Сложная математика PDF: микро-батчинг, спуск полос брошюр, нормализация координат.
-* `snmp_manager.py` — Низкоуровневый асинхронный опрос железа (счетчики, статусы, ошибки).
-* `config.py` — Загрузка и типизация настроек из `config.ini`.
-* `core.py` — Общие модели данных (FSM), утилиты форматирования UI.
-* `state_manager.py` — Атомарное чтение/запись JSON для защиты прогресса от внезапных отключений света.
+`GET /api/status` · `GET /api/events` (SSE) · `POST /api/jobs` (multipart: `file`, optional `paper duplex copies booklet batch_size cooldown page_from page_to position`) · `PATCH /api/jobs/{id}` · `POST /api/jobs/{id}/{up|down|top|bottom|move|hold|release|cancel|retry|delete}` · `POST /api/queue/{pause|resume}` · `POST /api/cooldown/{skip|add}` · `POST /api/emergency-stop` · `GET|PUT /api/defaults` · `GET /api/history`
 
----
-*Спроектировано для стабильной работы в образовательных учреждениях. Заботится о принтерах, бережет время сисадминов.*
+## Security notes
+
+- The web token travels over plain HTTP. Keep the port inside the LAN/VPN (firewall rule is for the private profile only).
+- Telegram chats not listed in `chat_id` / `viewer_ids` are ignored.
+
+## Troubleshooting
+
+- **Service won't start**: run `windows_service.py debug`; check `data\coolprint.log` and the Windows Event Log.
+- **Prints nothing / wrong queue**: names in `config.ini` must match the Windows printer names exactly, and the printers must be machine-wide.
+- **A3 comes out scaled wrong or the counter jumps by 2**: tune the A3 printer defaults and `a3_counter_weight`.
+- **Telegram silent**: check DNS/internet on the server (the bot retries with backoff) and that your ID is in `chat_id`.
+
+## Project layout
+
+| File | Role |
+| :--- | :--- |
+| `coolprint_app.py` | entry point: engine + web + Telegram |
+| `windows_service.py`, `install_service.bat` | Windows service wrapper / installer |
+| `engine.py` | scheduler: batches, cooldown, watchdog, recovery |
+| `jobs.py` | job model, persistent queue, event hub |
+| `printer_backend.py` | real printer (SNMP + spooler) and simulator |
+| `web_api.py`, `static/index.html` | REST/SSE API and web UI |
+| `telegram_ui.py` | Telegram bot |
+| `config.py` | settings, paths (anchored to the app folder) |
+| `pdf_processor.py`, `print_service.py`, `snmp_manager.py`, `state_manager.py` | PDF splitting/booklet, sending, SNMP, audit log |
+| `main.py` | original standalone CLI (still works) |
+| `archive/legacy_bot/` | the old v7.6 Telegram bot, kept for reference |
+| `tests/` | pytest suite (simulator based) |

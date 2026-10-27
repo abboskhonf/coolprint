@@ -1,10 +1,11 @@
 """
-print_service.py — Драйвер принтера (v7.1)
+print_service.py — Драйвер принтера (v8.0)
 ==========================================
 Отвечает ТОЛЬКО за отправку PDF-файла на принтер.
 Никакой работы с PDF-контентом — только subprocess.
 
-Windows: SumatraPDF.exe рядом со скриптом.
+Windows: PDFtoPrinter.exe в папке приложения; формат бумаги и дуплекс выбираются
+         логическим принтером (config.printer_queue).
 Linux/macOS: стандартный CUPS (lp).
 """
 
@@ -14,22 +15,21 @@ import platform
 from pathlib import Path
 from typing import Optional
 
+import config
+
 log = logging.getLogger(__name__)
 
-DUPLEX_CUPS    = {"long": "two-sided-long-edge",
-                  "short": "two-sided-short-edge",
-                  "none":  "one-sided"}
-DUPLEX_SUMATRA = {"long": "duplex", "short": "duplexshort", "none": None}
+DUPLEX_CUPS = {"long": "two-sided-long-edge",
+               "short": "two-sided-short-edge",
+               "none":  "one-sided"}
 
 
-def _find_sumatra() -> Optional[Path]:
-    candidates = [
-        Path(__file__).parent / "SumatraPDF.exe",
-        Path("SumatraPDF.exe"),
-        Path(r"C:\Program Files\SumatraPDF\SumatraPDF.exe"),
-        Path(r"C:\Program Files (x86)\SumatraPDF\SumatraPDF.exe"),
-    ]
-    return next((p for p in candidates if p.exists()), None)
+def _find_pdftoprinter() -> Path:
+    for base in (config.APP_DIR, Path(__file__).resolve().parent):
+        p = base / "PDFtoPrinter.exe"
+        if p.exists():
+            return p
+    raise FileNotFoundError("PDFtoPrinter.exe не найден рядом с программой.")
 
 
 async def _run_cmd(cmd: list[str], timeout: float) -> tuple[int, str, str]:
@@ -46,48 +46,33 @@ async def _run_cmd(cmd: list[str], timeout: float) -> tuple[int, str, str]:
         await proc.communicate()
         raise
 
-async def _send_windows(file_path: Path, printer_name_base: str, duplex: str, copies: int) -> None:
-    # PDFtoPrinter идеален для передачи в драйвер, когда мы не трогаем настройки
-    pdf_printer = Path("PDFtoPrinter.exe")
-    if not pdf_printer.exists(): 
-        pdf_printer = Path(__file__).parent / "PDFtoPrinter.exe"
-        if not pdf_printer.exists():
-            raise FileNotFoundError("PDFtoPrinter.exe не найден.")
-    
-    # 1. Читаем конфиг, чтобы выбрать правильный логический принтер
-    import configparser
-    cfg = configparser.ConfigParser()
-    cfg.read("config.ini", encoding="utf-8")
-    
-    # Маршрутизируем задание в зависимости от режима дуплекса
-    if duplex == "long":
-        target_printer = cfg.get("printer", "name_long", fallback=printer_name_base)
-    elif duplex == "short":
-        target_printer = cfg.get("printer", "name_short", fallback=printer_name_base)
-    else:
-        target_printer = cfg.get("printer", "name_none", fallback=printer_name_base)
 
-    # 2. Отправляем ЧИСТЫЙ файл без CLI-костылей
-    # Драйвер Canon UFR II сам применит А4 и нужный переплет, 
-    # а также сожмет файл до ~1 МБ
-    cmd = [
-        str(pdf_printer), 
-        str(file_path), 
-        target_printer
-    ]
-    
+def resolve_windows_queue(printer_name_base: str, duplex: str, paper: str) -> str:
+    """Логический принтер для (формат, дуплекс); без настройки — базовое имя."""
+    return config.printer_queue(paper, duplex) or printer_name_base
+
+
+async def _send_windows(file_path: Path, printer_name_base: str, duplex: str,
+                        copies: int, paper: str) -> None:
+    pdf_printer = _find_pdftoprinter()
+    target_printer = resolve_windows_queue(printer_name_base, duplex, paper)
+
+    # Отправляем чистый файл: драйвер Canon UFR II сам применит формат и переплёт,
+    # которые заданы в настройках логического принтера.
+    cmd = [str(pdf_printer), str(file_path), target_printer]
     log.info(f"Отправка на логический принтер [{target_printer}]: {file_path.name}")
-    
-    rc, out, err = await _run_cmd(cmd, timeout=120)
-    
-    if rc != 0: 
+
+    rc, _, err = await _run_cmd(cmd, timeout=120)
+    if rc != 0:
         raise RuntimeError(f"PDFtoPrinter rc={rc}: {err}")
 
-async def _send_unix(file_path: Path, printer_name: str, duplex: str, copies: int) -> None:
+
+async def _send_unix(file_path: Path, printer_name: str, duplex: str,
+                     copies: int, paper: str) -> None:
     """Отправка через CUPS. copies=1 — копии уже в PDF."""
     sides = DUPLEX_CUPS.get(duplex, "one-sided")
     cmd   = ["lp", "-d", printer_name, "-n", "1",
-             "-o", f"sides={sides}", "-o", "media=A4", str(file_path)]
+             "-o", f"sides={sides}", "-o", f"media={paper}", str(file_path)]
     log.debug(f"CMD: {' '.join(cmd)}")
     rc, _, err = await _run_cmd(cmd, timeout=300)
     if rc != 0:
@@ -102,6 +87,7 @@ async def send_to_printer(
     retries:         int                  = 3,
     retry_delay_sec: float                = 60.0,
     stop_event:      Optional[asyncio.Event] = None,
+    paper:           str                  = "A4",
 ) -> bool:
     """
     Отправляет один PDF-чанк на принтер с retry.
@@ -112,7 +98,7 @@ async def send_to_printer(
 
     for attempt in range(1, retries + 1):
         try:
-            await send_fn(file_path, printer_name, duplex, copies)
+            await send_fn(file_path, printer_name, duplex, copies, paper)
             log.info(f"  Задание принято спулером (попытка {attempt}/{retries})")
             return True
         except FileNotFoundError as e:
@@ -141,3 +127,26 @@ async def send_to_printer(
                 return False
 
     return False
+
+
+async def purge_queues(printer_name_base: str) -> int:
+    """Сбрасывает задания в спулере (кнопка «Отмена»). Возвращает число очередей, которые удалось очистить."""
+    if platform.system() == "Windows":
+        names = {config.printer_queue(p, d) for p in config.PAPER_SIZES for d in ("long", "short", "none")}
+        names.discard(None)
+        names = names or {printer_name_base}
+        ok = 0
+        for n in names:
+            ps = (f"Get-PrintJob -PrinterName '{n}' -ErrorAction SilentlyContinue | "
+                  f"Remove-PrintJob -ErrorAction SilentlyContinue")
+            try:
+                rc, _, _ = await _run_cmd(["powershell", "-NoProfile", "-Command", ps], timeout=30)
+                ok += rc == 0
+            except Exception as e:
+                log.warning(f"Не удалось очистить очередь {n}: {e}")
+        return ok
+    try:
+        rc, _, _ = await _run_cmd(["cancel", "-a", printer_name_base], timeout=15)
+        return int(rc == 0)
+    except Exception:
+        return 0
